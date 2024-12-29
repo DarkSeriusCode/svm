@@ -6,33 +6,44 @@
 #include "lexer.h"
 #include "common/arch.h"
 #include "common/io.h"
+#include "common/error.h"
 
 Token new_token(TokenType type, const char *value, Span span) {
-    char *val = malloc(strlen(value));
-    strcpy(val, value);
+    char *val = NULL;
+    if (value != 0) {
+        val = malloc(strlen(value) + 1);
+        strcpy(val, value);
+    }
     return (Token) { type, val, span };
 }
 
 const char *token_type_to_str(TokenType type) {
     switch (type) {
-        case TOKEN_UNKNOWN: return "<UNKNOWN>";
-        case TOKEN_SECTION: return "<SECTION>";
-        case TOKEN_IDENT:   return "<IDENT>";
-        case TOKEN_LABEL:   return "<LABEL>";
-        case TOKEN_INSTR:   return "<INSTR>";
-        case TOKEN_REG:     return "<REG>";
-        case TOKEN_COMMA:   return "<COMMA>";
-        case TOKEN_NUMBER:  return "<NUMBER>";
-        case TOKEN_END:     return "<END>";
-        case TOKEN_DECL:    return "<DECL>";
-        case TOKEN_STRING:  return "<STRING>";
-        case TOKEN_EOF:     return "<EOF>";
+        case TOKEN_UNKNOWN:  return "<UNKNOWN>";
+        case TOKEN_SECTION:  return "section";
+        case TOKEN_IDENT:    return "identifier";
+        case TOKEN_COLON:    return "colon";
+        case TOKEN_INSTR:    return "instruction";
+        case TOKEN_REG:      return "register";
+        case TOKEN_COMMA:    return "comma";
+        case TOKEN_NUMBER:   return "number";
+        case TOKEN_END:      return "end";
+        case TOKEN_DECL:     return "declaration";
+        case TOKEN_STRING:   return "string";
+        case TOKEN_EOF:      return "<EOF>";
         default: return "[undefined]";
     }
 }
 
-void free_token(Token lexem) {
-    free((void*)lexem.value);
+void free_token(void *lexem) {
+    free((void *)((Token*)lexem)->value);
+}
+
+bool is_reg(const char *buffer) {
+    if (strcmp(buffer, "sp") * strcmp(buffer, "cf") * strcmp(buffer, "ip") == 0) return true;
+    if (buffer[0] != 'r') return false;
+    if (buffer[1] != '\0' && is_number(buffer + 1)) return true;
+    return false;
 }
 
 bool is_ident(const char *buffer) {
@@ -42,44 +53,37 @@ bool is_ident(const char *buffer) {
     return true;
 }
 
-bool is_label(const char *buffer) {
-    char substr[strlen(buffer)];
-    strncpy(substr, buffer, sizeof(substr) - 1);
-    if (is_ident(substr) && buffer[strlen(buffer) - 1] == ':') return true;
-    return false;
-}
-
-bool is_instr(const char *buffer) {
-    for (size_t i = 0; i < sizeof(INSTRUCTION_SET)/sizeof(INSTRUCTION_SET[0]); i++)
-        if (strcmp(INSTRUCTION_SET[i], buffer) == 0) return true;
-    return false;
-}
-
-// TODO: Refactor `is_reg` and `is_instr`. Make it a single function like `contains` or smth
-bool is_reg(const char *buffer) {
-    for (size_t i = 0; i < sizeof(REGISTER_SET)/sizeof(REGISTER_SET[0]); i++)
-        if (strcmp(REGISTER_SET[i], buffer) == 0) return true;
-    return false;
-}
-
 bool is_number(const char *buffer) {
-    for (size_t i = 0; i < strlen(buffer); i++)
+    for (size_t i = 0; i < strlen(buffer); i++) {
+        if (buffer[i] == '-') continue;
         if (!isdigit(buffer[i])) return false;
+    }
     return true;
+}
+
+const char *is_incorrect(const char *buffer) {
+    for (const char *c = buffer; *c != '\0'; c++)
+        if (*c != '-' && *c != '_' && !isalnum(*c)) return c;
+    return NULL;
 }
 
 // ------------------------------------------------------------------------------------------------
 
 static Span calc_span(Span span, const char *buffer) {
-    return (Span) { span.column - strlen(buffer), span.line };
+    return (Span) { span.column - strlen(buffer), span.line, strlen(buffer) };
 }
 
 Lexer new_lexer(const char *file_name) {
+    vector(Token) token_buffer = NULL;
+    vector_reserve(token_buffer, 3);
+
     return (Lexer){
         .i = 0,
         .c = 0,
         .source_file = read_whole_file(file_name),
-        .current_span = (Span){ 1, 1, },
+        .current_span = (Span){ 1, 1, 0 },
+        .file_name = file_name,
+        .token_buffer = token_buffer,
     };
 }
 
@@ -101,12 +105,11 @@ Token lex_string(Lexer *lexer) {
     size_t start_pos = lexer->i;
     lexer_advice(lexer);
     while (lexer->c != '"') lexer_advice(lexer);
-
-    size_t len = lexer->i - start_pos - 1;
+    size_t len = lexer->i - start_pos + 1;
 
     char string[len+1];
     memset(string, 0, len);
-    strncpy(string, lexer->source_file + start_pos, len);
+    strncpy(string, lexer->source_file + start_pos - 1, len);
     string[len] = '\0';
 
     return new_token(TOKEN_STRING, string, calc_span(lexer->current_span, string));
@@ -118,29 +121,67 @@ void lexer_skip_whitespaces(Lexer *lexer) {
 }
 
 void lexer_skip_comment(Lexer *lexer) {
-    while (lexer->c != 10) lexer_advice(lexer);
-    lexer_advice(lexer);
+    while (lexer->c == ';') {
+        while (lexer->c != 10) lexer_advice(lexer);
+        lexer_advice(lexer);
+    }
+}
+
+Token make_nonterm(Lexer *lexer, const char *buffer, Span token_span) {
+    if (is_reg(buffer)) {
+        if (!in_register_set(buffer))
+            throw_error(UNKNOWN_REGISTER, buffer, token_span);
+        return new_token(TOKEN_REG, buffer, token_span);
+    }
+    if (is_ident(buffer))
+        return new_token(TOKEN_IDENT, buffer, token_span);
+    if (is_number(buffer))
+        return new_token(TOKEN_NUMBER, buffer, token_span);
+    return new_token(TOKEN_UNKNOWN, buffer, lexer->current_span);
 }
 
 Token lexer_get_next_token(Lexer *lexer) {
     Span tok_span;
     char buffer[1024];
+    size_t i = 0;
+    if (!vector_empty(lexer->token_buffer)) {
+        Token tok = lexer->token_buffer[0];
+        vector_erase(lexer->token_buffer, 0);
+        return tok;
+    }
     memset(buffer, 0, sizeof(buffer));
 
     lexer_advice(lexer);
-    lexer_skip_whitespaces(lexer);
-    if (lexer->i >= strlen(lexer->source_file))
-        return new_token(TOKEN_EOF, "", lexer->current_span);
-    for (size_t i = 0; !isspace(lexer->c); i++, lexer_advice(lexer)) {
-        switch (lexer->c) {
-            case ',': return new_token(TOKEN_COMMA, ",", calc_span(lexer->current_span, ","));
-            case '"': return lex_string(lexer);
-            case ';': lexer_skip_comment(lexer);
-        }
-        buffer[i] = lexer->c;
-        // NOTE: in case of "<ident>," lexer's gonna segfault
-        // because it thinks that <ident> and comma are one token
+    do {
+        // if the entire line is a comment it will skip it.
+        lexer_skip_comment(lexer);
+        lexer_skip_whitespaces(lexer);
+        if (lexer->i >= strlen(lexer->source_file))
+            return new_token(TOKEN_EOF, "", lexer->current_span);
+    } while (isspace(lexer->c) || lexer->c == ';');
 
+    while (!isspace(lexer->c)) {
+        switch (lexer->c) {
+            case '"': return lex_string(lexer);
+            case ';': lexer_skip_comment(lexer); continue;
+            case ',': {
+                Token comma = new_token(TOKEN_COMMA, ",", calc_span(lexer->current_span, ","));
+                vector_push_back(lexer->token_buffer, comma);
+                if (strlen(buffer)) {
+                    return make_nonterm(lexer, buffer, tok_span);
+                }
+                return lexer_get_next_token(lexer);
+            }; break;
+            case ':': {
+                Token colon = new_token(TOKEN_COLON, ":", calc_span(lexer->current_span, ":"));
+                vector_push_back(lexer->token_buffer, colon);
+                if (strlen(buffer)) {
+                    return make_nonterm(lexer, buffer, tok_span);
+                }
+                return lexer_get_next_token(lexer);
+            } break;
+        }
+        buffer[i++] = tolower(lexer->c);
         tok_span = calc_span(lexer->current_span, buffer);
 
         if (strcmp(buffer, "section") == 0)
@@ -149,24 +190,22 @@ Token lexer_get_next_token(Lexer *lexer) {
             return new_token(TOKEN_END, buffer, tok_span);
         if (strcmp(buffer, "db") == 0 || strcmp(buffer, "dw") == 0)
             return new_token(TOKEN_DECL, buffer, tok_span);
-        if (is_instr(buffer))
+        if (in_instruction_set(buffer))
             return new_token(TOKEN_INSTR, buffer, tok_span);
-        if (is_reg(buffer))
-            return new_token(TOKEN_REG, buffer, tok_span);
+        const char *incorrect_at = is_incorrect(buffer);
+        if (incorrect_at != NULL) {
+            tok_span.column += tok_span.len - 1;
+            tok_span.len = 1;
+            throw_error(INCORRECT_CHARACTER, tok_span);
+        }
+        lexer_advice(lexer);
     }
-    if (strlen(buffer) == 0) {
-        exit_with_erorr("Something went wrong and i have actually no idea why. Don't ask me ;-;");
-    }
-    if (is_label(buffer))
-        return new_token(TOKEN_LABEL, buffer, tok_span);
-    if (is_ident(buffer))
-        return new_token(TOKEN_IDENT, buffer, tok_span);
-    if (is_number(buffer))
-        return new_token(TOKEN_NUMBER, buffer, tok_span);
-
-    return new_token(TOKEN_UNKNOWN, 0, lexer->current_span);
+    assert(strlen(buffer) != 0);
+    return make_nonterm(lexer, buffer, tok_span);
 }
 
-void free_lexer(Lexer lexer) {
-    free((void*)lexer.source_file);
+void free_lexer(void *lexer_ptr) {
+    Lexer lexer = *(Lexer *)lexer_ptr;
+    free((void *)lexer.source_file);
+    free_vector(lexer.token_buffer);
 }

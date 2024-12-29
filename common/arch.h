@@ -1,9 +1,20 @@
 #ifndef __COMMON_ARCH_H
 #define __COMMON_ARCH_H
 
-#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-const char *INSTRUCTION_SET[] = { "load", "mov", "add", "store" };
-const char *REGISTER_SET[] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "ip", "cf" };
+typedef unsigned char byte;
+typedef unsigned short word;
+
+#define OPCODE_BIT_SIZE 4
+
+bool in_instruction_set(const char *inst);
+bool in_two_ops_instruction_set(const char *inst);
+bool in_register_set(const char *inst);
+
+byte get_instr_opcode(const char *instr_name);
+size_t get_instr_size(const char *instr_name);
+byte get_register_code(const char *reg_name);
 
 #endif

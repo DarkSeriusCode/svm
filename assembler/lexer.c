@@ -4,9 +4,9 @@
 #include <ctype.h>
 #include <string.h>
 #include "lexer.h"
+#include "assembler/error.h"
 #include "common/arch.h"
 #include "common/io.h"
-#include "common/error.h"
 
 Token new_token(TokenType type, const char *value, Span span) {
     char *val = NULL;
@@ -17,23 +17,6 @@ Token new_token(TokenType type, const char *value, Span span) {
     return (Token) { type, val, span };
 }
 
-const char *token_type_to_str(TokenType type) {
-    switch (type) {
-        case TOKEN_UNKNOWN:  return "<UNKNOWN>";
-        case TOKEN_SECTION:  return "section";
-        case TOKEN_IDENT:    return "identifier";
-        case TOKEN_COLON:    return "colon";
-        case TOKEN_INSTR:    return "instruction";
-        case TOKEN_REG:      return "register";
-        case TOKEN_COMMA:    return "comma";
-        case TOKEN_NUMBER:   return "number";
-        case TOKEN_END:      return "end";
-        case TOKEN_DECL:     return "declaration";
-        case TOKEN_STRING:   return "string";
-        case TOKEN_EOF:      return "<EOF>";
-        default: return "[undefined]";
-    }
-}
 
 void free_token(void *lexem) {
     free((void *)((Token*)lexem)->value);
@@ -130,7 +113,7 @@ void lexer_skip_comment(Lexer *lexer) {
 Token make_nonterm(Lexer *lexer, const char *buffer, Span token_span) {
     if (is_reg(buffer)) {
         if (!in_register_set(buffer))
-            throw_error(UNKNOWN_REGISTER, buffer, token_span);
+            error_unknown_register(buffer, token_span);
         return new_token(TOKEN_REG, buffer, token_span);
     }
     if (is_ident(buffer))
@@ -196,7 +179,7 @@ Token lexer_get_next_token(Lexer *lexer) {
         if (incorrect_at != NULL) {
             tok_span.column += tok_span.len - 1;
             tok_span.len = 1;
-            throw_error(INCORRECT_CHARACTER, tok_span);
+            error_invalid_character(tok_span);
         }
         lexer_advice(lexer);
     }

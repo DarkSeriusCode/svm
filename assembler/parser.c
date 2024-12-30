@@ -1,6 +1,5 @@
 #include "parser.h"
-#include "common/io.h"
-#include "common/error.h"
+#include "error.h"
 #include "common/arch.h"
 #include "common/vector.h"
 #include <stdio.h>
@@ -29,7 +28,7 @@ Parser new_parser(const char *filename) {
 Token parser_get_checked_token(Parser parser, size_t pos, TokenType tok_type) {
     Token tok = parser.tokens[pos];
     if (tok.type != tok_type) {
-        throw_error(UNEXPECTED_TOKEN, tok, tok_type);
+        error_unexpected_token(tok, tok_type);
     }
     return tok;
 }
@@ -50,7 +49,7 @@ Token parser_get_checked_token_in_list(Parser parser, size_t pos, size_t types_c
         vector_push_back(types, t);
     }
     va_end(args);
-    throw_error(UNEXPECTED_TOKEN_IN_VEC, tok, types);
+    error_unexpected_token_in_vec(tok ,types);
     return new_token(TOKEN_UNKNOWN, "", (Span){0, 0, 0});
 }
 
@@ -73,7 +72,7 @@ void parse_code_section(Parser *parser, Image *img) {
 
     while (parser->tokens[parser->idx].type != TOKEN_END) {
         if (is_label(parser->tokens + parser->idx) != TOKEN_UNKNOWN) {
-            throw_error(MISSED_LABEL, parser->tokens[parser->idx].span);
+            error_missed_label(parser->tokens[parser->idx].span);
         }
         Token label_name = parser->tokens[parser->idx];
         image_add_definition(img, label_name.value, vector_size(img->data));
@@ -90,7 +89,7 @@ void parse_code_section(Parser *parser, Image *img) {
 void parse_instrution(Parser *parser, Image *img) {
     Token instr_token = parser->tokens[parser->idx++];
     if (instr_token.type != TOKEN_INSTR) {
-        throw_error(UNEXPECTED_TOKEN, instr_token, TOKEN_INSTR);
+        error_unexpected_token(instr_token, TOKEN_INSTR);
     }
     int amount_of_ops = 0;
     if (in_two_ops_instruction_set(instr_token.value)) {
@@ -102,14 +101,14 @@ void parse_instrution(Parser *parser, Image *img) {
     for (int i = 0; i < amount_of_ops; i++) {
         Token tok = parser->tokens[parser->idx++];
         if (tok.type == TOKEN_COMMA) {
-            throw_error(UNEXPECTED_COMMA, tok.span);
+            error_unexpected_comma(tok.span);
         }
         vector_push_back(ops, tok);
         // Because ops are separeted by commas
         if (i != amount_of_ops - 1) {
             Token comma = parser->tokens[parser->idx++];
             if (comma.type != TOKEN_COMMA) {
-                throw_error(UNEXPECTED_TOKEN, comma, TOKEN_COMMA);
+                error_unexpected_token(comma, TOKEN_COMMA);
             }
         }
     }
@@ -224,22 +223,22 @@ TokenType is_label(Token *label_ptr) {
 void check_instr_ops(const char *instr_name, vector(Token) ops) {
     if (strcmp(instr_name, "load") * strcmp(instr_name, "store") == 0) {
         if (ops[0].type != TOKEN_REG)
-            throw_error(INVALID_OPERAND, ops[0].type, TOKEN_REG, ops[0].span);
+            error_invalid_operand(ops[0].type, TOKEN_REG, ops[0].span);
         if (ops[1].type != TOKEN_IDENT)
-            throw_error(INVALID_OPERAND, ops[1].type, TOKEN_IDENT, ops[1].span);
+            error_invalid_operand(ops[1].type, TOKEN_IDENT, ops[1].span);
     }
     if (strcmp(instr_name, "add") * strcmp(instr_name, "sub")
         * strcmp(instr_name, "mul") * strcmp(instr_name, "div") == 0)
     {
         if (ops[0].type != TOKEN_REG)
-            throw_error(INVALID_OPERAND, ops[0].type, TOKEN_REG, ops[0].span);
+            error_invalid_operand(ops[0].type, TOKEN_REG, ops[0].span);
         if (ops[1].type != TOKEN_REG)
-            throw_error(INVALID_OPERAND, ops[1].type, TOKEN_REG, ops[1].span);
+            error_invalid_operand(ops[1].type, TOKEN_REG, ops[1].span);
     }
     if (strcmp(instr_name, "mov") == 0) {
         if (ops[0].type != TOKEN_REG)
-            throw_error(INVALID_OPERAND, ops[0].type, TOKEN_REG, ops[0].span);
+            error_invalid_operand(ops[0].type, TOKEN_REG, ops[0].span);
         if (ops[1].type != TOKEN_REG && ops[1].type != TOKEN_NUMBER)
-            throw_error(INVALID_OPERAND_IN_LIST, ops[1].span, ops[1].type, 2, TOKEN_NUMBER, TOKEN_REG);
+            error_invalid_operand_in_args(ops[1].type, ops[1].span, 2, TOKEN_NUMBER, TOKEN_REG);
     }
 }

@@ -31,7 +31,6 @@ typedef struct {
 } Token;
 
 Token new_token(TokenType type, const char *value, Span span);
-const char *token_type_to_str(TokenType type);
 void free_token(void *lexem);
 
 bool is_reg(const char *buffer);

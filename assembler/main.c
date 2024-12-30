@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <argp.h>
-#include "common/io.h"
+#include "io.h"
 #include "common/vector.h"
 #include "image.h"
 #include "parser.h"

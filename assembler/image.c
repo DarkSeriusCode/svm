@@ -43,7 +43,7 @@ void image_add_declaration(Image *image, const char *name, word decl_address) {
 
 void image_add_definition(Image *image, const char *name, word def_address) {
     NameEntry *definition = image_get_name(*image, name);
-    if (definition && !definition->is_resolved && definition->usage_address != 0) {
+    if (definition && !definition->is_resolved) {
         image->data[definition->usage_address]     = def_address >> 8;
         image->data[definition->usage_address + 1] = def_address & 0xFF;
         definition->address = def_address;

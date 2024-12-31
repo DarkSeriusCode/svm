@@ -53,6 +53,7 @@ int main(int argc, char *argv[]) {
     vector(byte) ptr_to_main = NULL;
     vector_push_back_many(ptr_to_main, byte, 0, 0);
     image_add_data(&image, ptr_to_main);
+    image_add_declaration(&image, "_main", 0);
 
     Parser parser = new_parser(INPUT_FILE_NAME);
     if (SHOW_TOKENS) {

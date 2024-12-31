@@ -2,6 +2,7 @@
 #include "error.h"
 #include "common/arch.h"
 #include "common/vector.h"
+#include "io.h"
 #include <stdio.h>
 #include <assert.h>
 #include <limits.h>
@@ -150,7 +151,7 @@ void parse_instrution(Parser *parser, Image *img) {
             break;
 
             default:
-                printf("ПИСЬКА В ЖОПЕ\n");
+                printf("%s is unimplemented yet\n", token_type_to_str(op.type));
         }
     }
 

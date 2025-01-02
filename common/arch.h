@@ -7,7 +7,8 @@
 typedef unsigned char byte;
 typedef unsigned short word;
 
-#define OPCODE_BIT_SIZE 4
+#define OPCODE_BIT_SIZE 5
+#define REGISTER_BIT_SIZE 4
 
 bool in_instruction_set(const char *inst);
 bool in_two_ops_instruction_set(const char *inst);

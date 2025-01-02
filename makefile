@@ -8,12 +8,13 @@ else
 	CC_FLAGS += -O3
 endif
 
+SVM_DIR = vm
 SASM_DIR = assembler
 COMMON_DIR = common
 
-all: assembler
+all: assembler vm
 
-$(shell mkdir -p build build/obj build/obj/sasm build/obj/common)
+$(shell mkdir -p build build/obj build/obj/sasm build/obj/svm build/obj/common)
 
 HEADERS=
 
@@ -41,6 +42,20 @@ build/sasm: $(SASM_OBJS) build/common.a
 
 .PHONY: assembler
 assembler: build/sasm
+
+# -------------------------------------------------------------------------------------------------
+
+HEADERS += $(wildcard $(SVM_DIR)/*.h)
+SVM_OBJS = $(patsubst $(SVM_DIR)/%.c, build/obj/svm/%.o, $(wildcard $(SVM_DIR)/*.c))
+
+build/obj/svm/%.o: $(SVM_DIR)/%.c $(HEADERS)
+	$(CC) -c $< $(CC_FLAGS) -o $@
+
+build/svm: $(SVM_OBJS) build/common.a
+	$(CC) $(CC_FLAGS) $^ -o $@
+
+.PHONY: vm
+vm: build/svm
 
 # -------------------------------------------------------------------------------------------------
 

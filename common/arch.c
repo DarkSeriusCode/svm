@@ -5,8 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *INSTRUCTION_SET[] = { "load", "mov", "add", "sub", "store", "mul", "div" };
-const char *TWO_OPS_INSTRUCTIONS[] = { "load", "store", "mov", "add", "sub", "mul", "div" };
+const char *INSTRUCTION_SET[] = { "loadb", "loadw", "mov", "add", "sub", "storeb", "storew",
+                                  "mul", "div" };
+const char *TWO_OPS_INSTRUCTIONS[] = { "loadb", "loadw", "storeb", "storew", "mov", "add", "sub",
+                                       "mul", "div" };
 const char *REGISTER_SET[] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "ip", "cf" };
 
 bool in_instruction_set(const char *inst) {
@@ -29,19 +31,21 @@ bool in_register_set(const char *inst) {
 
 byte get_instr_opcode(const char *instr_name) {
     byte opcode = 0;
-    if (strcmp(instr_name, "mov") == 0) opcode = 0b0001;
-    if (strcmp(instr_name, "load") == 0) opcode = 0b0010;
-    if (strcmp(instr_name, "store") == 0) opcode = 0b0011;
-    if (strcmp(instr_name, "add") == 0) opcode = 0b0100;
-    if (strcmp(instr_name, "sub") == 0) opcode = 0b0101;
-    if (strcmp(instr_name, "mul") == 0) opcode = 0b0110;
-    if (strcmp(instr_name, "div") == 0) opcode = 0b0111;
+    if (strcmp(instr_name, "mov") == 0) opcode = 0b00001;
+    if (strcmp(instr_name, "loadb") == 0) opcode = 0b00010;
+    if (strcmp(instr_name, "storeb") == 0) opcode = 0b00011;
+    if (strcmp(instr_name, "add") == 0) opcode = 0b00100;
+    if (strcmp(instr_name, "sub") == 0) opcode = 0b00101;
+    if (strcmp(instr_name, "mul") == 0) opcode = 0b00110;
+    if (strcmp(instr_name, "div") == 0) opcode = 0b00111;
+    if (strcmp(instr_name, "loadw") == 0) opcode = 0b01000;
+    if (strcmp(instr_name, "storew") == 0) opcode = 0b01001;
     return opcode;
 }
 
 size_t get_instr_size(const char *instr_name) {
     if (strcmp(instr_name, "mov") == 0) return 4;
-    if (strcmp(instr_name, "load") * strcmp(instr_name, "store") == 0) return 3;
+    if (strcmp(instr_name, "loadb") * strcmp(instr_name, "storeb") == 0) return 4;
     return 2;
 }
 

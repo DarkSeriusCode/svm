@@ -18,7 +18,7 @@ Parser new_parser(const char *filename);
 Token parser_get_checked_token(Parser parser, size_t pos, TokenType tok_type);
 Token parser_get_checked_token_in_list(Parser parser, size_t pos, size_t types_count, ...);
 
-void parse_instrution(Parser *parser, Image *img);
+void parse_instruction(Parser *parser, Image *img);
 
 void parse_code_section(Parser *parser, Image *img);
 void parse_data_section(Parser *parser, Image *img);

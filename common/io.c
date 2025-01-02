@@ -35,11 +35,16 @@ void print_bitset(BitSet bs) {
     free_vector(bytes);
 }
 
-void load_program(byte *memory, size_t memory_size, const char *filename) {
+size_t load_program(byte *memory, size_t memory_size, const char *filename) {
     FILE *fp = fopen(filename, "rb");
     if (!fp) {
         error_file_doesnot_exist(filename);
     }
+    // getting len
+    fseek(fp, 0, SEEK_END);
+    size_t file_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
     fread(memory, memory_size, sizeof(byte), fp);
     fclose(fp);
+    return file_len;
 }

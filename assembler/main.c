@@ -67,6 +67,9 @@ int main(int argc, char *argv[]) {
     if (SHOW_IMAGE) {
         print_image(image);
     }
+    if (!image_get_name(image, "_main")->is_resolved) {
+        printf("In %s: Cannot generate a program image: no _main label!\n", INPUT_FILE_NAME);
+    }
     dump_image(image, OUTPUT_FILE_NAME);
 
     free_parser(&parser);

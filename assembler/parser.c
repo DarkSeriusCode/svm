@@ -79,7 +79,7 @@ void parse_code_section(Parser *parser, Image *img) {
         image_add_definition(img, label_name.value, vector_size(img->data));
         parser->idx += 2;
         while (is_label(parser->tokens + parser->idx) != TOKEN_UNKNOWN) {
-            parse_instrution(parser, img);
+            parse_instruction(parser, img);
             if (parser->tokens[parser->idx].type == TOKEN_END) {
                 break;
             }
@@ -87,7 +87,7 @@ void parse_code_section(Parser *parser, Image *img) {
     }
 }
 
-void parse_instrution(Parser *parser, Image *img) {
+void parse_instruction(Parser *parser, Image *img) {
     Token instr_token = parser->tokens[parser->idx++];
     if (instr_token.type != TOKEN_INSTR) {
         error_unexpected_token(instr_token, TOKEN_INSTR);
@@ -127,12 +127,12 @@ void parse_instrution(Parser *parser, Image *img) {
         switch (op.type) {
             case TOKEN_REG:
                 code = get_register_code(op.value);
-                code <<= (offset -= 4);
+                code <<= (offset -= REGISTER_BIT_SIZE);
                 instr |= code;
             break;
 
             case TOKEN_IDENT:
-                offset -= 8;
+                offset = (size_t)(offset / 8) * 8;
                 NameEntry *ident = image_get_name(*img, op.value);
                 if (ident) {
                     code = ident->address;
@@ -144,6 +144,7 @@ void parse_instrution(Parser *parser, Image *img) {
             break;
 
             case TOKEN_NUMBER:
+                offset = (size_t)(offset / 8) * 8;
                 // TODO: Show a warning about narrowing convertion
                 code = (unsigned short)strtol(op.value, &endptr, 10);
                 code <<= (offset - 16);

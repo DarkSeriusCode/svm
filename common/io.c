@@ -1,5 +1,6 @@
 #include "io.h"
 #include "error.h"
+#include <stdlib.h>
 
 char *read_whole_file(const char *filename) {
     FILE *fp = fopen(filename, "rb");
@@ -23,16 +24,6 @@ void print_byte(byte num) {
     for (int i = sizeof(num) * 8 - 1; i >= 0; i--) {
         putchar((num & (1U << i)) ? '1' : '0');
     }
-}
-
-void print_bitset(BitSet bs) {
-    vector(byte) bytes = bitset_to_vec(bs);
-    for (size_t i = 0; i < vector_size(bytes); i++) {
-        print_byte(bytes[i]);
-        printf("  ");
-    }
-    printf("\n");
-    free_vector(bytes);
 }
 
 size_t load_program(byte *memory, size_t memory_size, const char *filename) {

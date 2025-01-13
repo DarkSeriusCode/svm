@@ -24,20 +24,22 @@ const char *token_type_to_str(TokenType type) {
 
 void print_line_with_underline(const char *filename, Span span) {
     char *file_content = read_whole_file(filename);
-    size_t new_lines = 0;
-    while (new_lines < span.line - 3 && *file_content != '\0') {
+    long new_lines = 0;
+    long lines = (long)span.line;
+    while (new_lines < max(lines - 3, 0) && *file_content != '\0') {
         if (*file_content == 10) {
             new_lines++;
         }
         file_content++;
     }
-    char *line = strtok(file_content, "\n");
-    char offset[8];
-    for (size_t i = 0; i < 3; i++) {
-        sprintf(offset, "%lu | ", span.line - 2 + i);
+    char *line = strsep(&file_content, "\n");
+    char offset[32];
+    for (long i = lines - 3; i < lines; i++) {
+        if (i < 0) continue;
+        sprintf(offset, "%lu | ", i + 1);
         printf("%s%s\n", offset, line);
 
-        line = strtok(NULL, "\n");
+        line = strsep(&file_content, "\n");
     }
     for (size_t i = 0; i < span.column - 1 + strlen(offset); i++) {
         printf(" ");
@@ -67,12 +69,12 @@ void print_image(Image img) {
         }
     }
     for (size_t i = 0; i < vector_size(img.sym_table); i++) {
-        NameEntry entry = img.sym_table[i];
-        printf("%s", entry.name);
-        for (size_t j = strlen(entry.name); j < longest_name_len; j++) {
+        Symbol symbol = img.sym_table[i];
+        printf("%s", symbol.name);
+        for (size_t j = strlen(symbol.name); j < longest_name_len; j++) {
             printf(".");
         }
-        printf(":    0x%04x %s", entry.address, (entry.is_resolved) ? "" : "(unresolved)");
+        printf(":    0x%04x %s", symbol.address, (symbol.is_resolved) ? "" : "(unresolved)");
         printf("\n");
     }
 

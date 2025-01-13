@@ -14,7 +14,6 @@ Parser new_parser(const char *filename) {
     Token tok;
     do {
         tok = lexer_get_next_token(&lexer);
-        /* print_token(tok); */
         vector_push_back(tokens, tok);
     } while (tok.type != TOKEN_EOF);
     free_lexer(&lexer);
@@ -73,9 +72,14 @@ void parse_code_section(Parser *parser, Image *img) {
 
     while (parser->tokens[parser->idx].type != TOKEN_END) {
         if (is_label(parser->tokens + parser->idx) != TOKEN_UNKNOWN) {
-            error_missed_label(parser->tokens[parser->idx].span);
+            error_missed_label(parser->tokens[parser->idx].type, parser->tokens[parser->idx].span);
         }
         Token label_name = parser->tokens[parser->idx];
+        Symbol *label = image_get_symbol(*img, label_name.value);
+        if (label && label->is_resolved) {
+            Span pos = label_name.span;
+            error_redefinition(label_name.value, pos);
+        }
         image_add_definition(img, label_name.value, vector_size(img->data));
         parser->idx += 2;
         while (is_label(parser->tokens + parser->idx) != TOKEN_UNKNOWN) {
@@ -104,7 +108,7 @@ void parse_instruction(Parser *parser, Image *img) {
         if (tok.type == TOKEN_COMMA) {
             error_unexpected_comma(tok.span);
         }
-        vector_push_back(ops, tok);
+        vector_push_back(ops, copy_token(tok));
         // Because ops are separeted by commas
         if (i != amount_of_ops - 1) {
             Token comma = parser->tokens[parser->idx++];
@@ -118,7 +122,10 @@ void parse_instruction(Parser *parser, Image *img) {
     instr |= get_instr_opcode(instr_token.value);
     size_t offset = instr_size * 8 - OPCODE_BIT_SIZE;
     instr <<= offset;
-    check_instr_ops(instr_token.value, ops);
+    Span instr_pos = instr_token.span;
+    instr_pos.len = ops[amount_of_ops].span.column - instr_token.span.column
+                    + ops[amount_of_ops].span.len;
+    image_add_instr(img, instr_token.value, ops, instr_pos);
 
     for (size_t i = 0; i < vector_size(ops); i++) {
         Token op = ops[i];
@@ -133,7 +140,8 @@ void parse_instruction(Parser *parser, Image *img) {
 
             case TOKEN_IDENT:
                 offset = (size_t)(offset / 8) * 8;
-                NameEntry *ident = image_get_name(*img, op.value);
+                // TODO: Remove this, because of the code analysis
+                Symbol *ident = image_get_symbol(*img, op.value);
                 if (ident) {
                     code = ident->address;
                     instr |= code;
@@ -145,7 +153,6 @@ void parse_instruction(Parser *parser, Image *img) {
 
             case TOKEN_NUMBER:
                 offset = (size_t)(offset / 8) * 8;
-                // TODO: Show a warning about narrowing convertion
                 code = (unsigned short)strtol(op.value, &endptr, 10);
                 code <<= (offset - 16);
                 instr |= code;
@@ -187,12 +194,14 @@ void parse_data_section(Parser *parser, Image *img) {
         Token decl_val = parser_get_checked_token_in_list(*parser, parser->idx++, 2,
                                                           TOKEN_NUMBER, TOKEN_STRING);
         image_add_definition(img, decl_name.value, vector_size(img->data));
+        byte decl_size = 1;
         vector(byte) bytes = NULL;
         if (decl_val.type == TOKEN_NUMBER) {
             char *str_end;
             long val = strtol(decl_val.value, &str_end, 10);
             if (strcmp(decl_op.value, "dw") == 0) {
                 vector_push_back(bytes, val >> 8);
+                decl_size = 2;
             }
             vector_push_back(bytes, val & 0xFF);
         } else {
@@ -201,6 +210,9 @@ void parse_data_section(Parser *parser, Image *img) {
             }
         }
         image_add_data(img, bytes);
+        Span decl_pos = decl_name.span;
+        decl_pos.len = decl_val.span.column - decl_name.span.column + decl_val.span.len;
+        image_add_decl(img, decl_name.value, decl_val, decl_size, decl_pos);
     }
 }
 
@@ -217,30 +229,4 @@ TokenType is_label(Token *label_ptr) {
         return TOKEN_COLON;
     }
     return TOKEN_UNKNOWN;
-}
-
-// ------------------------------------------------------------------------------------------------
-
-
-void check_instr_ops(const char *instr_name, vector(Token) ops) {
-    if (strcmp(instr_name, "load") * strcmp(instr_name, "store") == 0) {
-        if (ops[0].type != TOKEN_REG)
-            error_invalid_operand(ops[0].type, TOKEN_REG, ops[0].span);
-        if (ops[1].type != TOKEN_IDENT)
-            error_invalid_operand(ops[1].type, TOKEN_IDENT, ops[1].span);
-    }
-    if (strcmp(instr_name, "add") * strcmp(instr_name, "sub")
-        * strcmp(instr_name, "mul") * strcmp(instr_name, "div") == 0)
-    {
-        if (ops[0].type != TOKEN_REG)
-            error_invalid_operand(ops[0].type, TOKEN_REG, ops[0].span);
-        if (ops[1].type != TOKEN_REG)
-            error_invalid_operand(ops[1].type, TOKEN_REG, ops[1].span);
-    }
-    if (strcmp(instr_name, "mov") == 0) {
-        if (ops[0].type != TOKEN_REG)
-            error_invalid_operand(ops[0].type, TOKEN_REG, ops[0].span);
-        if (ops[1].type != TOKEN_REG && ops[1].type != TOKEN_NUMBER)
-            error_invalid_operand_in_args(ops[1].type, ops[1].span, 2, TOKEN_NUMBER, TOKEN_REG);
-    }
 }

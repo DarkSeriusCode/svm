@@ -48,6 +48,9 @@ int main(int argc, char *argv[]) {
     int exit_code = argp_parse(&argp, argc, argv, 0, 0, &file_count);
     if (exit_code) { return exit_code; }
 
+    vector(int) v = NULL;
+    vector_push_back_many(v, int, 1, 4, 8, 8, 5, 4, 7, 0);
+
     Image image = new_image();
     // Reserve a word for pointer to _main
     vector(byte) ptr_to_main = NULL;
@@ -63,11 +66,12 @@ int main(int argc, char *argv[]) {
     }
     parse_data_section(&parser, &image);
     parse_code_section(&parser, &image);
+    image_analize(image);
 
     if (SHOW_IMAGE) {
         print_image(image);
     }
-    if (!image_get_name(image, "_main")->is_resolved) {
+    if (!image_get_symbol(image, "_main")->is_resolved) {
         printf("In %s: Cannot generate a program image: no _main label!\n", INPUT_FILE_NAME);
     }
     dump_image(image, OUTPUT_FILE_NAME);

@@ -4,6 +4,8 @@
 #include "assembler/image.h"
 #include "assembler/lexer.h"
 
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
 const char *token_type_to_str(TokenType type);
 
 void print_line_with_underline(const char *filename, Span span);

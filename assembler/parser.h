@@ -3,7 +3,6 @@
 
 #include <common/vector.h>
 #include "assembler/image.h"
-#include "common/bitset.h"
 #include "lexer.h"
 #include <stdint.h>
 
@@ -28,7 +27,5 @@ void free_parser(void *parser);
 // Checks if the next two tokens at `label_ptr` are parts of label token.
 // Returns TOKEN_UNKNOWN if there's a label, otherwise returns type of missed token
 TokenType is_label(Token *label_ptr);
-
-void check_instr_ops(const char *instr_name, vector(Token) ops);
 
 #endif

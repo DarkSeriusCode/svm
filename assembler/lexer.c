@@ -17,6 +17,16 @@ Token new_token(TokenType type, const char *value, Span span) {
     return (Token) { type, val, span };
 }
 
+Token copy_token(Token tok) {
+    char *str = malloc(strlen(tok.value) + 1);
+    strcpy(str, tok.value);
+    Token t = {
+        .value = str,
+        .type = tok.type,
+        .span = tok.span,
+    };
+    return t;
+}
 
 void free_token(void *lexem) {
     free((void *)((Token*)lexem)->value);

@@ -51,7 +51,7 @@ typedef struct {
     ( (vec) ? vector_base_to_header(vec)->capacity : (size_t)0 )
 
 #define vector_size(vec) \
-    ( (vec) ? vector_base_to_header(vec)->size : (size_t)0 )
+    ( (vec) ? vector_base_to_header((vec))->size : (size_t)0 )
 
 #define vector_item_size(vec) \
     ( (vec) ? vector_base_to_header(vec)->item_size : (size_t)0 )
@@ -84,6 +84,16 @@ typedef struct {
         type arr[] = { __VA_ARGS__ }; \
         for (size_t i = 0; i < sizeof(arr)/sizeof(arr[0]); i++) { \
             vector_push_back(vec, arr[i]); \
+        } \
+    } while(0);
+
+#define vector_find_str_by(vec, find_by, what, result) \
+    do {\
+        result = NULL; \
+        for (size_t i = 0; i < vector_size(vec); i++) { \
+            if (strcmp(what, vec[i]find_by) == 0) { \
+                result = &vec[i]; \
+            } \
         } \
     } while(0);
 
@@ -136,9 +146,9 @@ typedef struct {
             break; \
         } \
         VecElementDestructor destructor = ((VecHeader *)vector_base_to_header(vec))->destructor; \
-        for (size_t i = 0; i < vector_size(vec); i++) { \
+        for (size_t __i = 0; __i < vector_size(vec); __i++) { \
             if (destructor) { \
-                destructor(&vec[i]); \
+                destructor(&vec[__i]); \
             } \
         } \
         free(vector_base_to_header(vec)); \

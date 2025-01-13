@@ -19,10 +19,9 @@ int main(int argc, char *argv[]) {
     size_t program_size = load_program(memory, MEMORY_SIZE, INPUT_FILE_NAME);
 
     VM vm = new_vm(memory, program_size);
-    dump_vm(vm, 8, "vm1.dump");
     while (exec_instr(&vm)) {}
 
-    dump_vm(vm, 8, "vm2.dump");
+    dump_vm(vm, 8, "vm.dump");
 
     return 0;
 }

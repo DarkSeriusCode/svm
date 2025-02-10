@@ -3,18 +3,16 @@
 
 #include <stddef.h>
 #include <stdbool.h>
-#include <common/vector.h>
+#include "common/vector.h"
 
 typedef enum {
     TOKEN_UNKNOWN = 0,
-    TOKEN_SECTION,
     TOKEN_IDENT,
-    TOKEN_COLON,
+    TOKEN_LABEL,
     TOKEN_INSTR,
     TOKEN_REG,
     TOKEN_COMMA,
     TOKEN_NUMBER,
-    TOKEN_END,
     TOKEN_DECL,
     TOKEN_STRING,
     TOKEN_EOF,
@@ -57,7 +55,8 @@ void lexer_advice(Lexer *lexer);
 Token lex_string(Lexer *lexer);
 void lexer_skip_whitespaces(Lexer *lexer);
 void lexer_skip_comment(Lexer *lexer);
-Token make_nonterm(Lexer *lexer, const char *buffer, Span token_span);
+Token make_nonterm(const char *buffer, Span token_span);
+Token lexer_push_and_return_nonterm(Lexer *lexer, Token tok, const char *buffer, Span token_span);
 Token lexer_get_next_token(Lexer *lexer);
 void free_lexer(void *lexer);
 

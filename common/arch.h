@@ -10,7 +10,10 @@ typedef unsigned short word;
 #define OPCODE_BIT_SIZE 5
 #define REGISTER_BIT_SIZE 4
 
+#define ENTRY_POINT_NAME "_main"
+
 bool in_instruction_set(const char *inst);
+bool in_one_op_instruction_set(const char *inst);
 bool in_two_ops_instruction_set(const char *inst);
 bool in_register_set(const char *inst);
 

@@ -4,8 +4,10 @@
 #include <argp.h>
 #include "io.h"
 #include "common/vector.h"
+#include "common/arch.h"
 #include "image.h"
 #include "parser.h"
+#include "error.h"
 
 struct argp_option options[] = {
     { 0, 'o', "OUTPUT_FILE", 0, "Name of the output file.", 0 },
@@ -48,15 +50,9 @@ int main(int argc, char *argv[]) {
     int exit_code = argp_parse(&argp, argc, argv, 0, 0, &file_count);
     if (exit_code) { return exit_code; }
 
-    vector(int) v = NULL;
-    vector_push_back_many(v, int, 1, 4, 8, 8, 5, 4, 7, 0);
-
     Image image = new_image();
-    // Reserve a word for pointer to _main
-    vector(byte) ptr_to_main = NULL;
-    vector_push_back_many(ptr_to_main, byte, 0, 0);
-    image_add_data(&image, ptr_to_main);
-    image_add_declaration(&image, "_main", 0);
+    image_add_declaration(&image, ENTRY_POINT_NAME, 0);
+    vector_push_back_many(image.data, byte, 0, 0)
 
     Parser parser = new_parser(INPUT_FILE_NAME);
     if (SHOW_TOKENS) {
@@ -64,18 +60,50 @@ int main(int argc, char *argv[]) {
             print_token(parser.tokens[i]);
         }
     }
-    parse_data_section(&parser, &image);
-    parse_code_section(&parser, &image);
-    image_analize(image);
+    vector(Label) labels = NULL;
+    vector_set_destructor(labels, free_label);
+    for (Label lbl = parse_label(&parser); lbl.name != NULL; lbl = parse_label(&parser)) {
+        if (lbl.is_empty) {
+            warning_empty_label(lbl);
+            continue;
+        }
+        vector_push_back(labels, lbl);
+    }
+    // Data labels
+    for (size_t i = 0; i < vector_size(labels); i++) {
+        Label lbl = labels[i];
+        if (!lbl.is_data) continue;
+        if (strcmp(lbl.name, ENTRY_POINT_NAME) == 0) {
+            printf("In %s: _main label cannot contain data!\n", INPUT_FILE_NAME);
+            exit(EXIT_FAILURE);
+        }
+        image_add_definition(&image, lbl.name, image_content_size(image));
+        for (size_t j = 0; j < vector_size(lbl.declarations); j++) {
+            image_add_data(&image, lbl.declarations[j]);
+        }
+    }
+    // Code labels
+    for (size_t i = 0; i < vector_size(labels); i++) {
+        Label lbl = labels[i];
+        if (lbl.is_data) continue;
+        image_add_definition(&image, lbl.name, image_content_size(image));
+        for (size_t j = 0; j < vector_size(lbl.instructions); j++) {
+            image_add_code(&image, lbl.instructions[j]);
+        }
+    }
 
     if (SHOW_IMAGE) {
         print_image(image);
     }
-    if (!image_get_symbol(image, "_main")->is_resolved) {
+    image_check_unresolved_names(image);
+    Symbol *entry_point = image_get_symbol(image, "_main");
+    if (!entry_point || !entry_point->is_resolved) {
         printf("In %s: Cannot generate a program image: no _main label!\n", INPUT_FILE_NAME);
+        exit(EXIT_FAILURE);
     }
     dump_image(image, OUTPUT_FILE_NAME);
 
+    free_vector(labels);
     free_parser(&parser);
     free_image(&image);
 

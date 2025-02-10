@@ -3,6 +3,7 @@
 #include "vm/machine.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 const size_t MEMORY_SIZE = 256 * 256;
 
@@ -14,14 +15,15 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     INPUT_FILE_NAME = argv[1];
-    byte memory[MEMORY_SIZE];
-    memset(memory, 0, sizeof(memory));
+    byte *memory = malloc(MEMORY_SIZE);
+    memset(memory, 0, MEMORY_SIZE);
     size_t program_size = load_program(memory, MEMORY_SIZE, INPUT_FILE_NAME);
 
     VM vm = new_vm(memory, program_size);
     while (exec_instr(&vm)) {}
 
-    dump_vm(vm, 8, "vm.dump");
+    dump_vm(vm, program_size, "vm.dump");
+    free(memory);
 
     return 0;
 }

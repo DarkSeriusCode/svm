@@ -12,4 +12,6 @@ void print_byte(byte num);
 // Returns the size of the loaded program
 size_t load_program(byte *memory, size_t memory_size, const char *filename);
 
+void error_file_doesnot_exist(const char *filename);
+
 #endif

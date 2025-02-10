@@ -1,8 +1,9 @@
 #ifndef __ASM_IO_H
 #define __ASM_IO_H
 
-#include "assembler/image.h"
-#include "assembler/lexer.h"
+#include "image.h"
+#include "lexer.h"
+#include "parser.h"
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
@@ -13,6 +14,9 @@ void print_line_with_underline(const char *filename, Span span);
 void print_span(Span span);
 void print_token(Token tok);
 void print_image(Image img);
+void print_instr(Instr instr);
+void print_decl(Decl decl);
+void print_label(Label lbl);
 
 void dump_image(Image image, const char *filename);
 

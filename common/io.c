@@ -1,5 +1,4 @@
 #include "io.h"
-#include "error.h"
 #include <stdlib.h>
 
 char *read_whole_file(const char *filename) {
@@ -38,4 +37,9 @@ size_t load_program(byte *memory, size_t memory_size, const char *filename) {
     fread(memory, memory_size, sizeof(byte), fp);
     fclose(fp);
     return file_len;
+}
+
+void error_file_doesnot_exist(const char *filename) {
+    printf("File not found: %s\n", filename);
+    exit(EXIT_FAILURE);
 }

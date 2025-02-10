@@ -12,11 +12,12 @@ word read_word_as_big_endian(byte *memory);
 // ------------------------------------------------------------------------------------------------
 
 typedef struct {
-    word general_registers[8];
+    word general_registers[13];
     word ip;
     word sp;
     word cf;
     byte *memory;
+    byte *stack_start;
     size_t program_size;
 } VM;
 

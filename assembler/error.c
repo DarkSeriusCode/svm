@@ -24,9 +24,12 @@ void error_section_not_found(const char *section_name) {
 
 void error_unexpected_token(Token unexpected_token, TokenType expected_token_type) {
     print_basic_error_message(unexpected_token.span, "Syntax error. Unexpected token!", NULL);
-    printf("  Expected `%s` but got %s which is `%s`!\n",
-            token_type_to_str(expected_token_type), unexpected_token.value,
-            token_type_to_str(unexpected_token.type));
+    printf("  Expected `%s` but got `%s`",
+            token_type_to_str(expected_token_type), unexpected_token.value);
+    if (unexpected_token.type != TOKEN_UNKNOWN) {
+        printf(" which is `%s`!", token_type_to_str(unexpected_token.type));
+    }
+    printf("\n");
     exit(EXIT_FAILURE);
 }
 
@@ -41,8 +44,11 @@ void error_unexpected_token_in_args(Token unexpected_token, size_t types_count, 
             printf("or");
         }
     }
-    printf(" but got %s which is `%s`!\n", unexpected_token.value,
-           token_type_to_str(unexpected_token.type));
+    printf(" but got `%s`", unexpected_token.value);
+    if (unexpected_token.type != TOKEN_UNKNOWN) {
+        printf(" which is `%s`!", token_type_to_str(unexpected_token.type));
+    }
+    printf("\n");
     va_end(args);
     exit(EXIT_FAILURE);
 }
@@ -56,8 +62,11 @@ void error_unexpected_token_in_vec(Token unexpected_token, vector(TokenType) typ
             printf("or");
         }
     }
-    printf(" but got %s which is `%s`!\n", unexpected_token.value,
-           token_type_to_str(unexpected_token.type));
+    printf(" but got `%s`", unexpected_token.value);
+    if (unexpected_token.type != TOKEN_UNKNOWN) {
+        printf(" which is `%s`!", token_type_to_str(unexpected_token.type));
+    }
+    printf("\n");
     exit(EXIT_FAILURE);
 }
 
@@ -123,6 +132,31 @@ void error_undefined_identifier(Token ident) {
     exit(EXIT_FAILURE);
 }
 
+void error_missed_bracket(const char *bracket, Span pos) {
+    print_basic_error_message(pos, "Syntax error. Missed bracket!", NULL);
+    printf(" Try to add '%s'\n", bracket);
+    exit(EXIT_FAILURE);
+}
+
+void error_invalid_name(const char *name, const char *name_of_what, Span span) {
+    printf("In %s:", INPUT_FILE_NAME);
+    print_span(span);
+    printf(" Invalid name of %s: \"%s\"\n", name_of_what, name);
+    print_line_with_underline(INPUT_FILE_NAME, span);
+    exit(EXIT_FAILURE);
+}
+
+void error_negative_alignment_size(Span pos) {
+    print_basic_error_message(pos, "Invalid value. You cannot use a negative alignment!", NULL);
+    exit(EXIT_FAILURE);
+}
+
+void error_unresolved_name(Symbol name) {
+    printf("In %s:", INPUT_FILE_NAME);
+    printf(" Cannot find definition of name `%s`!\n", name.name);
+    exit(EXIT_FAILURE);
+}
+
 // ------------------------------------------------------------------------------------------------
 
 void warning_number_out_of_bounds(long num, long lower_bound, long upper_bound, Span pos) {
@@ -133,17 +167,8 @@ void warning_number_out_of_bounds(long num, long lower_bound, long upper_bound, 
     print_line_with_underline(INPUT_FILE_NAME, pos);
 }
 
-void warning_wrong_ident_size(Token ident, Decl decl, size_t expected_size) {
-    assert(expected_size == 1 || expected_size == 2);
-    print_basic_error_message(ident.span, "Used identifier with wrong size!", NULL);
-    char *size_should_be = "byte";
-    char *wrong_size = "word";
-    if (expected_size == 2) {
-        size_should_be = "word";
-        wrong_size = "byte";
-    }
-    printf("  Size should be %s instead of %s!\n", size_should_be, wrong_size);
-    printf("\n  Identifier '%s' is defined here:\n", ident.value);
-    print_line_with_underline(INPUT_FILE_NAME, decl.pos);
-    printf("\n");
+void warning_empty_label(Label lbl) {
+    printf("In %s:", INPUT_FILE_NAME);
+    print_span(lbl.span);
+    printf(" Empty label (%s) will be ignored!\n", lbl.name);
 }

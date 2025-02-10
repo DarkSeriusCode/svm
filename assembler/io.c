@@ -6,19 +6,17 @@
 
 const char *token_type_to_str(TokenType type) {
     switch (type) {
-        case TOKEN_UNKNOWN:  return "<UNKNOWN>";
-        case TOKEN_SECTION:  return "section";
-        case TOKEN_IDENT:    return "identifier";
-        case TOKEN_COLON:    return "colon";
-        case TOKEN_INSTR:    return "instruction";
-        case TOKEN_REG:      return "register";
-        case TOKEN_COMMA:    return "comma";
-        case TOKEN_NUMBER:   return "number";
-        case TOKEN_END:      return "end";
-        case TOKEN_DECL:     return "declaration";
-        case TOKEN_STRING:   return "string";
-        case TOKEN_EOF:      return "<EOF>";
-        default: return "[undefined]";
+        case TOKEN_UNKNOWN:     return "<UNKNOWN>";
+        case TOKEN_IDENT:       return "identifier";
+        case TOKEN_LABEL:       return "label";
+        case TOKEN_INSTR:       return "instruction";
+        case TOKEN_REG:         return "register";
+        case TOKEN_COMMA:       return "comma";
+        case TOKEN_NUMBER:      return "number";
+        case TOKEN_DECL:        return "declaration";
+        case TOKEN_STRING:      return "string";
+        case TOKEN_EOF:         return "<EOF>";
+        default:                return "[undefined]";
     }
 }
 
@@ -84,6 +82,44 @@ void print_image(Image img) {
             printf("\n");
         }
         printf("%02x ", img.data[i]);
+    }
+    printf("\n");
+}
+
+void print_instr(Instr instr) {
+    printf("%s ", instr.name);
+    for (size_t i = 0; i < vector_size(instr.ops); i++) {
+        if (i != vector_size(instr.ops) - 1) {
+            printf(", ");
+        }
+    }
+    printf("\n");
+}
+
+void print_decl(Decl decl) {
+    printf("%s %s\n", decl.kind.value, decl.value.value);
+}
+
+void print_label(Label lbl) {
+    if (lbl.name == NULL) {
+        printf("No label\n");
+        return;
+    }
+    printf("Label `%s`%s:\n", lbl.name, lbl.is_data ? " (data)" : "");
+    if (vector_size(lbl.instructions) == 0) {
+        printf("No content\n");
+        return;
+    }
+    if (!lbl.is_data) {
+        for (size_t i = 0; i < vector_size(lbl.instructions); i++) {
+            printf("    ");
+            print_instr(lbl.instructions[i]);
+        }
+    } else {
+        for (size_t i = 0; i < vector_size(lbl.declarations); i++) {
+            printf("    ");
+            print_decl(lbl.declarations[i]);
+        }
     }
     printf("\n");
 }

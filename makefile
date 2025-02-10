@@ -1,11 +1,11 @@
 CC = gcc
 CC_FLAGS = -Wall -Wextra -I.
 
-RELEASE ?= false
-ifeq ($(RELEASE), false)
-	CC_FLAGS += -g -O0
-else
+DEBUG ?= false
+ifeq ($(DEBUG), false)
 	CC_FLAGS += -O3
+else
+	CC_FLAGS += -g -O0
 endif
 
 SVM_DIR = vm

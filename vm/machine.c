@@ -30,9 +30,9 @@ VM new_vm(byte *memory, size_t program_size) {
         .program_size = program_size,
         .memory = memory,
         .cf = 0,
-        .sp = program_size + STACK_OFFSET,
+        .sp = program_size + STACK_OFFSET + STACK_SIZE,
         .ip = read_word_as_big_endian(memory),
-        .stack_start = memory + program_size + STACK_OFFSET,
+        .stack_start = memory + program_size + STACK_OFFSET + STACK_SIZE,
     };
     memset(vm.general_registers, 0, sizeof(vm.general_registers));
 
@@ -149,8 +149,7 @@ int exec_instr(VM *vm) {
             buffer |= mem[1] >> 7;
             byte reg = buffer;
             word reg_value = vm->general_registers[reg];
-            vm->memory[vm->sp++] = reg_value >> 8;
-            vm->memory[vm->sp++] = (byte)reg_value;
+            push_in_stack(vm, reg_value);
             vm->ip += get_instr_size("push");
         }; break;
 
@@ -159,9 +158,7 @@ int exec_instr(VM *vm) {
             buffer |= (mem[0] & 0x7) << 1;
             buffer |= mem[1] >> 7;
             byte reg = buffer;
-            word stack_value = 0;
-            stack_value |= vm->memory[--vm->sp];
-            stack_value |= vm->memory[--vm->sp] << 8;
+            word stack_value = pop_from_stack(vm);
             vm->general_registers[reg] = stack_value;
             vm->ip += get_instr_size("pop");
         }; break;
@@ -171,6 +168,18 @@ int exec_instr(VM *vm) {
             exit(1);
     }
     return 1;
+}
+
+void push_in_stack(VM *vm, word value) {
+    vm->memory[vm->sp--] = value >> 8;
+    vm->memory[vm->sp--] = value & 0xff;
+}
+
+word pop_from_stack(VM *vm) {
+    word value = 0;
+    value |= vm->memory[++vm->sp] << 8;
+    value |= vm->memory[++vm->sp];
+    return value;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -214,7 +223,7 @@ void dump_vm(VM vm, size_t memory_size_to_dump, const char *filename) {
 
     fprintf(fp, "\n\nStack\n");
     size_t counter = 0;
-    for (byte *b = vm.stack_start; b < vm.memory + vm.sp; b++, counter++) {
+    for (byte *b = vm.stack_start; b > vm.memory + vm.sp; b--, counter++) {
         if (counter != 0 && counter % 16 == 0) {
             fprintf(fp, "\n");
         }

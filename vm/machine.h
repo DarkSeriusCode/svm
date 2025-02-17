@@ -24,6 +24,8 @@ typedef struct {
 VM new_vm(byte *memory, size_t program_size);
 // Returns 0 if the last instruction was executed, otherwise returns 1
 int exec_instr(VM *vm);
+void push_in_stack(VM *vm, word value);
+word pop_from_stack(VM *vm);
 
 // ------------------------------------------------------------------------------------------------
 

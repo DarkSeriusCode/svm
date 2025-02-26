@@ -22,11 +22,12 @@ typedef struct {
 
 Image new_image(void);
 
+void image_codegen(Image *img, vector(Label) labels);
 void image_add_declaration(Image *image, const char *name, word decl_address);
 void image_add_definition(Image *image, const char *name, word def_address);
 Symbol *image_get_symbol(Image image, const char *name);
-void image_add_data(Image *image, Decl decl);
-void image_add_code(Image *image, Instr instr);
+void image_codegen_data(Image *image, Decl decl);
+void image_codegen_code(Image *image, Instr instr);
 size_t image_content_size(Image image);
 void image_check_unresolved_names(Image image);
 

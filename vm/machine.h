@@ -4,7 +4,7 @@
 #include "common/arch.h"
 #include <stdio.h>
 
-#define STACK_SIZE 32
+#define STACK_SIZE 32 // Size in bytes
 #define STACK_OFFSET 8
 
 word read_word_as_big_endian(byte *memory);
@@ -17,8 +17,9 @@ typedef struct {
     word sp;
     word cf;
     byte *memory;
-    byte *stack_start;
     size_t program_size;
+    size_t stack_size;
+    word stack_begging;
 } VM;
 
 VM new_vm(byte *memory, size_t program_size);
@@ -26,6 +27,10 @@ VM new_vm(byte *memory, size_t program_size);
 int exec_instr(VM *vm);
 void push_in_stack(VM *vm, word value);
 word pop_from_stack(VM *vm);
+// Puts a call frame on top of the stack
+void call_function(VM *vm, word func_addr, word ret_addr);
+// Takes a call frame from stack and exits from a function
+void return_from_function(VM *vm);
 
 // ------------------------------------------------------------------------------------------------
 

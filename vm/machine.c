@@ -23,16 +23,25 @@ static void read_two_regs(byte *mem, byte *reg1, byte *reg2) {
     *reg2 = buffer;
 }
 
+// Reads two registers via read_two_regs and performs an action on them, saving result in the first
+// register
+#define two_reg_operation(vm, mem, op) \
+    do { \
+        byte _reg1 = 0, _reg2 = 0; \
+        read_two_regs(mem, &_reg1, &_reg2); \
+        vm->general_registers[_reg1] op vm->general_registers[_reg2]; \
+    } while(0);
+
 // ------------------------------------------------------------------------------------------------
 
 VM new_vm(byte *memory, size_t program_size) {
     VM vm = {
         .program_size = program_size,
+        .stack_begging = program_size + STACK_OFFSET + STACK_SIZE,
         .memory = memory,
         .cf = 0,
         .sp = program_size + STACK_OFFSET + STACK_SIZE,
         .ip = read_word_as_big_endian(memory),
-        .stack_start = memory + program_size + STACK_OFFSET + STACK_SIZE,
     };
     memset(vm.general_registers, 0, sizeof(vm.general_registers));
 
@@ -82,41 +91,31 @@ int exec_instr(VM *vm) {
 
         // mov
         case 0b00001: {
-            byte dest_reg, source_reg;
-            read_two_regs(mem, &dest_reg, &source_reg);
-            vm->general_registers[dest_reg] = vm->general_registers[source_reg];
+            two_reg_operation(vm, mem, =);
             vm->ip += get_instr_size("mov");
         }; break;
 
         // add
         case 0b00100: {
-            byte dest_reg, source_reg;
-            read_two_regs(mem, &dest_reg, &source_reg);
-            vm->general_registers[dest_reg] += vm->general_registers[source_reg];
+            two_reg_operation(vm, mem, +=);
             vm->ip += get_instr_size("add");
         }; break;
 
         // sub
         case 0b00101: {
-            byte dest_reg, source_reg;
-            read_two_regs(mem, &dest_reg, &source_reg);
-            vm->general_registers[dest_reg] -= vm->general_registers[source_reg];
+            two_reg_operation(vm, mem, -=);
             vm->ip += get_instr_size("sub");
         }; break;
 
         // mul
         case 0b00110: {
-            byte dest_reg, source_reg;
-            read_two_regs(mem, &dest_reg, &source_reg);
-            vm->general_registers[dest_reg] *= vm->general_registers[source_reg];
+            two_reg_operation(vm, mem, *=);
             vm->ip += get_instr_size("mul");
         }; break;
 
         // div
         case 0b00111: {
-            byte dest_reg, source_reg;
-            read_two_regs(mem, &dest_reg, &source_reg);
-            vm->general_registers[dest_reg] /= vm->general_registers[source_reg];
+            two_reg_operation(vm, mem, /=);
             vm->ip += get_instr_size("div");
         }; break;
 
@@ -163,6 +162,57 @@ int exec_instr(VM *vm) {
             vm->ip += get_instr_size("pop");
         }; break;
 
+        // and
+        case 0b01101: {
+            two_reg_operation(vm, mem, &=);
+            vm->ip += get_instr_size("and");
+        }; break;
+
+        // or
+        case 0b01110: {
+            two_reg_operation(vm, mem, |=);
+            vm->ip += get_instr_size("or");
+        }; break;
+
+        // xor
+        case 0b01111: {
+            two_reg_operation(vm, mem, ^=);
+            vm->ip += get_instr_size("xor");
+        }; break;
+
+        // shl
+        case 0b10000: {
+            two_reg_operation(vm, mem, <<=);
+            vm->ip += get_instr_size("shl");
+        }; break;
+
+        // shr
+        case 0b10001: {
+            two_reg_operation(vm, mem, >>=);
+            vm->ip += get_instr_size("shr");
+        }; break;
+
+        // not
+        case 0b10010: {
+            byte reg = 0;
+            reg |= (mem[0] & 0x7) << 1;
+            reg |= mem[1] >> 7;
+            vm->general_registers[reg] = ~vm->general_registers[reg];
+            vm->ip += get_instr_size("not");
+        }; break;
+
+        // call
+        case 0b01011: {
+            word func_addr = read_word_as_big_endian(&mem[1]);
+            word ret_addr = vm->ip += get_instr_size("call");
+            call_function(vm, func_addr, ret_addr);
+        }; break;
+
+        // ret
+        case 0b01100: {
+            return_from_function(vm);
+        }; break;
+
         default:
             printf("\nInstruction with opcode 0x%02x is not supported yet\n", opcode);
             exit(1);
@@ -171,6 +221,11 @@ int exec_instr(VM *vm) {
 }
 
 void push_in_stack(VM *vm, word value) {
+    if (vm->stack_begging - vm->sp >= STACK_SIZE) {
+        printf("Stack overflow (vm dumped)\n");
+        dump_vm(*vm, vm->program_size, "stackowerflow.dump");
+        exit(1);
+    }
     vm->memory[vm->sp--] = value >> 8;
     vm->memory[vm->sp--] = value & 0xff;
 }
@@ -180,6 +235,15 @@ word pop_from_stack(VM *vm) {
     value |= vm->memory[++vm->sp] << 8;
     value |= vm->memory[++vm->sp];
     return value;
+}
+
+void call_function(VM *vm, word func_addr, word ret_addr) {
+    push_in_stack(vm, ret_addr);
+    vm->ip = func_addr;
+}
+
+void return_from_function(VM *vm) {
+    vm->ip = pop_from_stack(vm);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -223,7 +287,7 @@ void dump_vm(VM vm, size_t memory_size_to_dump, const char *filename) {
 
     fprintf(fp, "\n\nStack\n");
     size_t counter = 0;
-    for (byte *b = vm.stack_start; b > vm.memory + vm.sp; b--, counter++) {
+    for (byte *b = vm.memory + vm.stack_begging; b > vm.memory + vm.sp; b--, counter++) {
         if (counter != 0 && counter % 16 == 0) {
             fprintf(fp, "\n");
         }

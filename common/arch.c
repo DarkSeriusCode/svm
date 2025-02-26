@@ -4,16 +4,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *INSTRUCTION_SET[] = { "load", "movi", "mov", "add", "sub", "store", "mul", "div",
-                                  "push", "pop" };
-const char *ONE_OP_INSTRUCTIONS[] = { "push", "pop" };
-const char *TWO_OPS_INSTRUCTIONS[] = { "load", "movi", "store", "mov", "add", "sub", "mul", "div" };
+const char *ZERO_OP_INSTRUCTIONS[] = { "ret" };
+const char *ONE_OP_INSTRUCTIONS[] = { "push", "pop", "call", "not" };
+const char *TWO_OPS_INSTRUCTIONS[] = { "load", "movi", "store", "mov", "add", "sub", "mul", "div", 
+                                       "and", "or", "xor", "shl", "shr" };
 const char *REGISTER_SET[] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10",
                                "r11", "r12",  "sp", "ip", "cf" };
 
 bool in_instruction_set(const char *inst) {
-    for (size_t i = 0; i < sizeof(INSTRUCTION_SET)/sizeof(INSTRUCTION_SET[0]); i++)
-        if (strcmp(INSTRUCTION_SET[i], inst) == 0) return true;
+    return in_zero_op_instruction_set(inst) || in_one_op_instruction_set(inst)
+           || in_two_ops_instruction_set(inst);
+}
+
+bool in_zero_op_instruction_set(const char *inst) {
+    for (size_t i = 0; i < sizeof(ZERO_OP_INSTRUCTIONS)/sizeof(ZERO_OP_INSTRUCTIONS[0]); i++)
+        if (strcmp(ZERO_OP_INSTRUCTIONS[i], inst) == 0) return true;
     return false;
 }
 
@@ -47,12 +52,22 @@ byte get_instr_opcode(const char *instr_name) {
     if (strcmp(instr_name, "movi") == 0) opcode = 0b01000;
     if (strcmp(instr_name, "push") == 0) opcode = 0b01001;
     if (strcmp(instr_name, "pop") == 0) opcode = 0b01010;
+    if (strcmp(instr_name, "call") == 0) opcode = 0b01011;
+    if (strcmp(instr_name, "ret") == 0) opcode = 0b01100;
+    if (strcmp(instr_name, "and") == 0) opcode = 0b01101;
+    if (strcmp(instr_name, "or") == 0) opcode = 0b01110;
+    if (strcmp(instr_name, "xor") == 0) opcode = 0b01111;
+    if (strcmp(instr_name, "shl") == 0) opcode = 0b10000;
+    if (strcmp(instr_name, "shr") == 0) opcode = 0b10001;
+    if (strcmp(instr_name, "not") == 0) opcode = 0b10010;
     return opcode;
 }
 
 size_t get_instr_size(const char *instr_name) {
     if (strcmp(instr_name, "load") * strcmp(instr_name, "store")
         * strcmp(instr_name, "movi") == 0) return 4;
+    if (strcmp(instr_name, "call") == 0) return 3;
+    if (strcmp(instr_name, "ret") == 0) return 1;
     return 2;
 }
 

@@ -4,22 +4,10 @@
 #include <ctype.h>
 #include <string.h>
 #include "lexer.h"
-#include "assembler/error.h"
+#include "io.h"
 #include "common/arch.h"
 #include "common/io.h"
-
-static bool is_buffer_in_args(const char *buffer, size_t count, ...) {
-    va_list args;
-    va_start(args, count);
-    for (size_t i = 0; i < count; i++) {
-        if (strcmp(buffer, va_arg(args, char*)) == 0) {
-            va_end(args);
-            return true;
-        }
-    }
-    va_end(args);
-    return false;
-}
+#include "common/utils.h"
 
 Token new_token(TokenType type, const char *value, Span span) {
     char *val = NULL;
@@ -46,7 +34,7 @@ void free_token(void *lexem) {
 }
 
 bool is_reg(const char *buffer) {
-    if (is_buffer_in_args(buffer, 3, "sp", "cf", "ip")) return true;
+    if (string_in_args(buffer, 3, "sp", "cf", "ip")) return true;
     if (buffer[0] != 'r') return false;
     if (buffer[1] != '\0' && is_number(buffer + 1)) return true;
     return false;
@@ -195,7 +183,7 @@ Token lexer_get_next_token(Lexer *lexer) {
         buffer[i++] = tolower(lexer->c);
         tok_span = calc_span(lexer->current_span, buffer);
 
-        if (is_buffer_in_args(buffer, 4, ".byte", ".word", ".align", ".ascii"))
+        if (string_in_args(buffer, 4, ".byte", ".word", ".align", ".ascii"))
             return new_token(TOKEN_DECL, buffer, tok_span);
         const char *incorrect_at = is_incorrect(buffer);
         if (incorrect_at != NULL) {

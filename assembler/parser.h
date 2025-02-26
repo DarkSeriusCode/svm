@@ -19,8 +19,7 @@ typedef struct {
 } Instr;
 
 Instr new_instr(const char *name, vector(Token) ops, Span pos);
-void instr_check(Instr instr);
-void check_number_bounds(Token op, size_t should_has_size);
+void instr_check_ops(Instr instr);
 void check_single_op(Token op, size_t expected_types_count, ...);
 
 typedef struct {

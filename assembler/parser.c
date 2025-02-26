@@ -1,10 +1,10 @@
 #include "parser.h"
-#include "error.h"
+#include "common/utils.h"
+#include "io.h"
 #include "common/arch.h"
 #include "common/vector.h"
 #include <stdio.h>
 #include <assert.h>
-#include <limits.h>
 
 Decl new_decl(Token decl_kind, Token decl_value, Span span) {
     return (Decl){ decl_kind, decl_value, span };
@@ -14,37 +14,10 @@ Instr new_instr(const char *name, vector(Token) ops, Span pos) {
     char *allocated_str = malloc(strlen(name) + 1);
     strcpy(allocated_str, name);
     vector(Token) new_ops = NULL;
-    for (size_t i = 0; i < vector_size(ops); i++) {
-        vector_push_back(new_ops, copy_token(ops[i]));
+    foreach(Token, op, ops) {
+        vector_push_back(new_ops, copy_token(*op));
     }
     return (Instr){ allocated_str, new_ops, pos };
-}
-
-void check_number_bounds(Token op, size_t should_has_size) {
-    assert(should_has_size == 1 || should_has_size == 2);
-    char *strend;
-    long n = strtol(op.value, &strend, 10);
-    long lower_bound = 0, upper_bound = 0;
-    if (should_has_size == 1) {
-        if (n < 0) {
-            lower_bound = CHAR_MIN;
-            upper_bound = CHAR_MAX;
-        } else {
-            lower_bound = 0;
-            upper_bound = UCHAR_MAX;
-        }
-    } else {
-        if (n < 0) {
-            lower_bound = SHRT_MIN;
-            upper_bound = SHRT_MAX;
-        } else {
-            lower_bound = 0;
-            upper_bound = USHRT_MAX;
-        }
-    }
-    if (!(lower_bound < n && n < upper_bound)) {
-        warning_number_out_of_bounds(n, lower_bound, upper_bound, op.span);
-    }
 }
 
 void check_single_op(Token op, size_t expected_types_count, ...) {
@@ -62,7 +35,7 @@ void check_single_op(Token op, size_t expected_types_count, ...) {
     va_end(args);
 }
 
-void instr_check(Instr instr) {
+void instr_check_ops(Instr instr) {
     const char *instr_name = instr.name;
     vector(Token) ops = instr.ops;
 
@@ -74,18 +47,20 @@ void instr_check(Instr instr) {
         check_single_op(ops[0], 1, TOKEN_REG);
         check_single_op(ops[1], 3, TOKEN_IDENT, TOKEN_REG, TOKEN_NUMBER);
     }
-    if (strcmp(instr_name, "add") * strcmp(instr_name, "sub")
-        * strcmp(instr_name, "mul") * strcmp(instr_name, "div") == 0)
+    if (string_in_args(instr_name, 9, "add", "sub", "mul", "div", "and", "or", "xor", "shl", "shr"))
     {
         check_single_op(ops[0], 1, TOKEN_REG);
         check_single_op(ops[1], 1, TOKEN_REG);
     }
+    if (strcmp(instr_name, "not") == 0) {
+        check_single_op(ops[0], 1, TOKEN_REG);
+    }
     if (strcmp(instr_name, "movi") == 0) {
         check_single_op(ops[0], 1, TOKEN_REG);
         check_single_op(ops[1], 2, TOKEN_NUMBER, TOKEN_IDENT);
-        if (ops[1].type == TOKEN_NUMBER) {
-            check_number_bounds(ops[1], 2);
-        }
+    }
+    if (strcmp(instr_name, "call") == 0) {
+        check_single_op(ops[0], 1, TOKEN_IDENT);
     }
 }
 
@@ -182,7 +157,8 @@ Label parse_label(Parser *parser) {
     label_set_name(&label, lbl_tok.value);
     label.span = lbl_tok.span;
     if (parser->tokens[parser->idx].type == TOKEN_LABEL) {
-         return label;
+        label.is_empty = true;
+        return label;
     }
     Token tok = parser->tokens[parser->idx];
     if (tok.type != TOKEN_INSTR && tok.type != TOKEN_DECL) {
@@ -229,7 +205,6 @@ void parse_instruction(Parser *parser, Label *label) {
     if (in_two_ops_instruction_set(instr_token.value)) {
         amount_of_ops = 2;
     }
-    assert(amount_of_ops != 0);
     vector(Token) ops = NULL;
     for (int i = 0; i < amount_of_ops; i++) {
         Token tok = parser->tokens[parser->idx++];
@@ -246,10 +221,12 @@ void parse_instruction(Parser *parser, Label *label) {
         }
     }
     Span instr_pos = instr_token.span;
-    instr_pos.len = ops[amount_of_ops].span.column - instr_token.span.column
-                    + ops[amount_of_ops].span.len;
+    if (amount_of_ops != 0) {
+        instr_pos.len = ops[amount_of_ops].span.column - instr_token.span.column
+                        + ops[amount_of_ops].span.len;
+    }
     Instr instr = new_instr(instr_token.value, ops, instr_pos);
-    instr_check(instr);
+    instr_check_ops(instr);
     label_add_instr(label, instr);
 }
 

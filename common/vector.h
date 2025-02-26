@@ -140,6 +140,9 @@ typedef struct {
         vector_set_size(vec, 0); \
     } while(0);
 
+#define foreach(item_type, item, vec) \
+    for (item_type *item = vec; item < vec + vector_size(vec); item++)\
+
 #define free_vector(vec) \
     do { \
         if (vec == NULL) { \

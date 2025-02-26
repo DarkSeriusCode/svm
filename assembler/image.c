@@ -1,11 +1,13 @@
 #include "image.h"
 #include "assembler/lexer.h"
 #include "common/vector.h"
-#include "error.h"
+#include "common/utils.h"
+#include "io.h"
 #include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 // ------------------------------------------------------------------------------------------------
 
@@ -37,6 +39,25 @@ Image new_image(void) {
         .sym_table = sym_table,
         .data = NULL,
     };
+}
+
+void image_codegen(Image *image, vector(Label) labels) {
+    // Data labels
+    foreach(Label, lbl, labels) {
+        if (!lbl->is_data) continue;
+        image_add_definition(image, lbl->name, image_content_size(*image));
+        foreach(Decl, decl, lbl->declarations) {
+            image_codegen_data(image, *decl);
+        }
+    }
+    // Code labels
+    foreach(Label, lbl, labels) {
+        if (lbl->is_data) continue;
+        image_add_definition(image, lbl->name, image_content_size(*image));
+        foreach(Instr, instr, lbl->instructions) {
+            image_codegen_code(image, *instr);
+        }
+    }
 }
 
 static void image_subst_address(Image *image, word where, word what) {
@@ -75,23 +96,18 @@ Symbol *image_get_symbol(Image image, const char *name) {
     return NULL;
 }
 
-void image_add_data(Image *image, Decl decl) {
+void image_codegen_data(Image *image, Decl decl) {
     char *UNUSED;
     long value = strtol(decl.value.value, &UNUSED, 10);
     if (strcmp(decl.kind.value, ".align") == 0) {
-        if (value < 0) {
-            error_negative_alignment_size(decl.span);
-        }
         for (long i = 0; i < value; i++) {
             vector_push_back(image->data, 0);
         }
     }
     if (strcmp(decl.kind.value, ".byte") == 0) {
-        check_number_bounds(decl.value, 1);
         vector_push_back(image->data, (byte)value);
     }
     if (strcmp(decl.kind.value, ".word") == 0) {
-        check_number_bounds(decl.value, 2);
         vector_push_back(image->data, value >> 8);
         vector_push_back(image->data, (byte)value);
     }
@@ -121,7 +137,7 @@ static void append_name_placeholder_to_bin_repr(size_t *offset) {
     *offset -= sizeof(word);
 }
 
-void image_add_code(Image *image, Instr instr) {
+void image_codegen_code(Image *image, Instr instr) {
     unsigned long instr_bin_repr = 0;
     size_t instr_size = get_instr_size(instr.name);
     instr_bin_repr |= get_instr_opcode(instr.name);
@@ -157,21 +173,26 @@ void image_add_code(Image *image, Instr instr) {
             image_add_declaration(image, instr.ops[1].value, address);
             append_name_placeholder_to_bin_repr(&offset);
         } else if (instr.ops[1].type == TOKEN_NUMBER) {
-            check_number_bounds(instr.ops[1], 2);
             append_number_to_bin_repr(&instr_bin_repr, &offset, instr.ops[1]);
         } else {
             append_bit_to_bin_repr(&instr_bin_repr, &offset, 1);
             append_reg_to_bin_repr(&instr_bin_repr, &offset, instr.ops[1]);
         }
     }
-    if (strcmp(instr.name, "add") * strcmp(instr.name, "sub") * strcmp(instr.name, "mul")
-        * strcmp(instr.name, "div") == 0)
+    if (string_in_args(instr.name, 9, "add", "sub", "mul", "div", "and", "or", "xor", "shl", "shr"))
     {
         append_reg_to_bin_repr(&instr_bin_repr, &offset, instr.ops[0]);
         append_reg_to_bin_repr(&instr_bin_repr, &offset, instr.ops[1]);
     }
+    if (strcmp(instr.name, "not") == 0) {
+        append_reg_to_bin_repr(&instr_bin_repr, &offset, instr.ops[0]);
+    }
     if (strcmp(instr.name, "push") * strcmp(instr.name, "pop") == 0) {
         append_reg_to_bin_repr(&instr_bin_repr, &offset, instr.ops[0]);
+    }
+    if (strcmp(instr.name, "call") == 0) {
+        image_add_declaration(image, instr.ops[0].value, image_content_size(*image) - 2);
+        append_name_placeholder_to_bin_repr(&offset);
     }
 
     size_t data_size = image_content_size(*image);
@@ -186,10 +207,9 @@ size_t image_content_size(Image image) {
 }
 
 void image_check_unresolved_names(Image image) {
-    for (size_t i = 0; i < vector_size(image.sym_table); i++) {
-        Symbol sym = image.sym_table[i];
-        if (!sym.is_resolved) {
-            error_unresolved_name(sym);
+    foreach(Symbol, sym, image.sym_table) {
+        if (!sym->is_resolved) {
+            error_unresolved_name(*sym);
         }
     }
 }

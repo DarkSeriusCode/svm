@@ -19,6 +19,7 @@ const char *token_type_to_str(TokenType type) {
         case TOKEN_NUMBER:      return "number";
         case TOKEN_DECL:        return "declaration";
         case TOKEN_STRING:      return "string";
+        case TOKEN_CMP:         return "cmp";
         case TOKEN_EOF:         return "<EOF>";
         default:                return "[undefined]";
     }
@@ -76,15 +77,20 @@ void print_image(Image img) {
             printf(".");
         }
         printf(":    0x%04x %s", symbol->address, (symbol->is_resolved) ? "" : "(unresolved)");
+        size_t unresolved_usages_count = vector_size(symbol->unresolved_usages);
+        if (unresolved_usages_count != 0) {
+            printf("  [used in %ld place%s", unresolved_usages_count,
+                    (unresolved_usages_count == 1) ? "]" : "s]");
+        }
         printf("\n");
     }
 
     printf("\nHex:\n");
-    for (size_t i = 0; i < vector_size(img.data); i++) {
+    for (size_t i = 0; i < vector_size(img.buffer); i++) {
         if (i > 0 && i % 16 == 0) {
             printf("\n");
         }
-        printf("%02x ", img.data[i]);
+        printf("%02x ", img.buffer[i]);
     }
     printf("\n");
 }
@@ -129,7 +135,7 @@ void print_label(Label lbl) {
 
 void dump_image(Image image, const char *filename) {
     FILE *fp = fopen(filename, "wb");
-    fwrite(image.data, vector_size(image.data), sizeof(byte), fp);
+    fwrite(image.buffer, vector_size(image.buffer), sizeof(byte), fp);
     fclose(fp);
 }
 

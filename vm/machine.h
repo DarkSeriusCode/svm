@@ -4,7 +4,7 @@
 #include "common/arch.h"
 #include <stdio.h>
 
-#define STACK_SIZE 32 // Size in bytes
+#define STACK_SIZE 64*2 // Size in bytes
 #define STACK_OFFSET 8
 
 word read_word_as_big_endian(byte *memory);

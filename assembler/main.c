@@ -1,3 +1,5 @@
+#define VECTOR_IMPLEMENTATION
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +21,7 @@ void print_help(const char *name);
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         print_help(argv[0]);
+        return 0;
     }
     int res = 0;
 
@@ -42,8 +45,8 @@ int main(int argc, char *argv[]) {
     }
 
     Image image = new_image();
-    image_add_declaration(&image, ENTRY_POINT_NAME, 0);
-    vector_push_back_many(image.data, byte, 0, 0)
+    image_add_usage(&image, ENTRY_POINT_NAME, 0);
+    vector_push_back_many(image.buffer, byte, 0, 0)
 
     Parser parser = new_parser(INPUT_FILE_NAME);
     if (SHOW_TOKENS) {
@@ -51,31 +54,29 @@ int main(int argc, char *argv[]) {
             print_token(parser.tokens[i]);
         }
     }
-    vector(Label) labels = NULL;
-    vector_set_destructor(labels, free_label);
     for (Label lbl = parse_label(&parser); lbl.name != NULL; lbl = parse_label(&parser)) {
         if (lbl.is_empty) {
             warning_empty_label(lbl);
             continue;
         }
-        vector_push_back(labels, lbl);
+        image_add_label(&image, lbl);
     }
-    analyse_program(labels);
+    analyse_program(image.labels);
 
-    image_codegen(&image, labels);
+    image_codegen(&image);
 
     if (SHOW_IMAGE) {
         print_image(image);
     }
-    image_check_unresolved_names(image);
-    Symbol *entry_point = image_get_symbol(image, "_main");
+    Symbol *entry_point = image_get_symbol(image, ENTRY_POINT_NAME);
     if (!entry_point || !entry_point->is_resolved) {
-        printf("In %s: Cannot generate a program image: no _main label!\n", INPUT_FILE_NAME);
+        printf("In %s: Cannot generate a program image: no "ENTRY_POINT_NAME" label!", INPUT_FILE_NAME);
+        printf(" Try add:\n_main:\n<your code goes here>\nret\n");
         exit(EXIT_FAILURE);
     }
+    image_check_unresolved_names(image);
     dump_image(image, OUTPUT_FILE_NAME);
 
-    free_vector(labels);
     free_parser(&parser);
     free_image(&image);
 

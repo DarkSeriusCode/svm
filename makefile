@@ -1,7 +1,7 @@
 CC = gcc
 CC_FLAGS = -Wall -Wextra -I.
 
-DEBUG ?= false
+DEBUG ?= true
 ifeq ($(DEBUG), false)
 	CC_FLAGS += -O3
 else
@@ -59,6 +59,11 @@ vm: build/svm
 
 # -------------------------------------------------------------------------------------------------
 
+
+.PHONY: clean_dumps
+clean_dumps:
+	rm -rf *.dump
+
 .PHONY: clean
-clean:
+clean: clean_dumps
 	rm -rf build

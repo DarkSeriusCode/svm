@@ -39,29 +39,26 @@ void instr_check_ops(Instr instr) {
     const char *instr_name = instr.name;
     vector(Token) ops = instr.ops;
 
-    if (strcmp(instr_name, "mov") == 0) {
+    if (string_in_args(instr_name, 4, "mov", "load", "store", "cmp")) {
         check_single_op(ops[0], 1, TOKEN_REG);
-        check_single_op(ops[1], 1, TOKEN_REG);
-    }
-    if (strcmp(instr_name, "load") * strcmp(instr_name, "store") == 0) {
-        check_single_op(ops[0], 1, TOKEN_REG);
-        check_single_op(ops[1], 3, TOKEN_IDENT, TOKEN_REG, TOKEN_NUMBER);
+        check_single_op(ops[1], 3, TOKEN_REG, TOKEN_NUMBER, TOKEN_IDENT);
     }
     if (string_in_args(instr_name, 9, "add", "sub", "mul", "div", "and", "or", "xor", "shl", "shr"))
     {
         check_single_op(ops[0], 1, TOKEN_REG);
-        check_single_op(ops[1], 1, TOKEN_REG);
+        check_single_op(ops[1], 2, TOKEN_REG, TOKEN_NUMBER, TOKEN_IDENT);
     }
-    if (strcmp(instr_name, "not") == 0) {
+    if (string_in_args(instr_name, 3, "not", "push", "pop")) {
         check_single_op(ops[0], 1, TOKEN_REG);
     }
-    if (strcmp(instr_name, "movi") == 0) {
-        check_single_op(ops[0], 1, TOKEN_REG);
-        check_single_op(ops[1], 2, TOKEN_NUMBER, TOKEN_IDENT);
-    }
-    if (strcmp(instr_name, "call") == 0) {
+    if (string_in_args(instr_name, 2, "call", "jmp")) {
         check_single_op(ops[0], 1, TOKEN_IDENT);
     }
+    if (strcmp(instr_name, "jif") == 0) {
+        check_single_op(ops[0], 1, TOKEN_CMP);
+        check_single_op(ops[1], 1, TOKEN_IDENT);
+    }
+    // ret instruction doesn't need a check (it has no params ;-;)
 }
 
 Label empty_label(void) {
@@ -83,13 +80,13 @@ void label_add_decl(Label *label, Decl decl) {
 }
 
 void free_label(void *label) {
-    Label *lbl = (Label *)label;
-    if (lbl->name)
-        free((void *)lbl->name);
-    if (lbl->is_data) {
-        free_vector(lbl->declarations);
+    Label lbl = *(Label *)label;
+    if (lbl.name)
+        free((void *)lbl.name);
+    if (lbl.is_data) {
+        free_vector(&lbl.declarations);
     } else {
-        free_vector(lbl->instructions);
+        free_vector(&lbl.instructions);
     }
 }
 
@@ -138,7 +135,7 @@ Token parser_get_checked_token_in_list(Parser parser, size_t pos, size_t types_c
         TokenType t = va_arg(args, TokenType);
         if (tok.type == t) {
             va_end(args);
-            free_vector(types);
+            free_vector(&types);
             return tok;
         }
         vector_push_back(types, t);
@@ -232,5 +229,5 @@ void parse_instruction(Parser *parser, Label *label) {
 
 void free_parser(void *parser) {
     Parser p = *(Parser *)parser;
-    free_vector(p.tokens);
+    free_vector(&p.tokens);
 }

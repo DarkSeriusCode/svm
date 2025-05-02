@@ -56,13 +56,23 @@ typedef struct {
 #define vector_item_size(vec) \
     ( (vec) ? vector_base_to_header(vec)->item_size : (size_t)0 )
 
-// ONLY FOR INTERNAL USAGE.
-#define vector_set_size(vec, new_size) \
+// ONLY FOR INTERNAL USE.
+#define __vector_set_size(vec, new_size) \
     (((VecHeader *)vector_base_to_header(vec))->size = (new_size))
 
-// ONLY FOR INTERNAL USAGE
-#define vector_set_capacity(vec, new_cap) \
+// ONLY FOR INTERNAL USE
+#define __vector_set_capacity(vec, new_cap) \
     (((VecHeader *)vector_base_to_header(vec))->capacity = (new_cap))
+
+// ONLY FOR INTERNAL USE
+#define __vector_free_item(vec, idx) \
+    do { \
+        VecElementDestructor destructor = ((VecHeader *)vector_base_to_header(vec))->destructor; \
+        if (destructor) { \
+            void *ptr = vec + idx * vector_base_to_header(vec)->item_size; \
+            destructor(ptr); \
+        } \
+    } while(0);
 
 #define vector_empty(vec) \
     ( vector_size((vec)) == 0 )
@@ -76,7 +86,7 @@ typedef struct {
             vector_grow(vec, new_cap); \
         } \
         (vec)[vector_size(vec)] = (val); \
-        vector_set_size(vec, vector_size(vec) + 1); \
+        __vector_set_size(vec, vector_size(vec) + 1); \
     } while(0);
 
 #define vector_push_back_many(vec, type, ...) \
@@ -105,20 +115,31 @@ typedef struct {
 
 #define vector_erase(vec, idx) \
     do { \
+        void *_vector = vec; \
         if (vector_size(vec) <= idx) { \
             break; \
         } \
-        VecElementDestructor destructor = ((VecHeader *)vector_base_to_header(vec))->destructor; \
-        if (destructor) { \
-            destructor(&vec[idx]); \
-        } \
+        __vector_free_item(_vector, idx); \
         if (vector_size(vec) - 1 == idx) { \
-            vector_set_size(vec, vector_size(vec) - 1); \
+            __vector_set_size(vec, vector_size(vec) - 1); \
             break; \
         } \
         memcpy((void *)&vec[idx], (void *)&vec[idx + 1], \
                 (vector_size(vec) - idx) * sizeof(*(vec))); \
-        vector_set_size(vec, vector_size(vec) - 1); \
+        __vector_set_size(vec, vector_size(vec) - 1); \
+    } while(0);
+
+#define vector_clean(vector) \
+    do { \
+        void *vec = vector; \
+        if (vec == NULL) { \
+            break; \
+        } \
+        for (size_t __i = 0; __i < vector_size(vec); __i++) { \
+            __vector_free_item(vec, __i); \
+        } \
+        memset(vec, 0, vector_size(vec)); \
+        __vector_set_size(vec, 0); \
     } while(0);
 
 #define vector_reserve(vec, new_cap) \
@@ -127,34 +148,30 @@ typedef struct {
         if (vector_capacity(vec) < new_cap) { \
             vector_grow(vec, new_cap); \
         } \
-        vector_set_capacity(vec, new_cap); \
-    } while(0);
-
-#define vector_clean(vec) \
-    do { \
-        VecElementDestructor destructor = ((VecHeader *)vector_base_to_header(vec))->destructor; \
-        for (size_t i = 0; i < vector_size(vec); i++) { \
-            destructor((void *)&vec[i]); \
-            vec[i] = 0; \
-        } \
-        vector_set_size(vec, 0); \
+        __vector_set_capacity(vec, new_cap); \
     } while(0);
 
 #define foreach(item_type, item, vec) \
     for (item_type *item = vec; item < vec + vector_size(vec); item++)\
 
-#define free_vector(vec) \
+#define vector_init(vec, type, destructor, ...) \
     do { \
-        if (vec == NULL) { \
-            break; \
-        } \
-        VecElementDestructor destructor = ((VecHeader *)vector_base_to_header(vec))->destructor; \
-        for (size_t __i = 0; __i < vector_size(vec); __i++) { \
-            if (destructor) { \
-                destructor(&vec[__i]); \
-            } \
-        } \
-        free(vector_base_to_header(vec)); \
+        vector_set_destructor(vec, destructor); \
+        vector_push_back_many(vec, type, __VA_ARGS__); \
     } while(0);
 
+void free_vector(void *vector);
+
+#ifdef VECTOR_IMPLEMENTATION
+void free_vector(void *vector) {
+        void *vec = *(void **)vector;
+        if (vec == NULL) {
+            return;
+        }
+        for (size_t __i = 0; __i < vector_size(vec); __i++) {
+            __vector_free_item(vec, __i);
+        }
+        free(vector_base_to_header(vec));
+}
+#endif
 #endif

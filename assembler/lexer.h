@@ -15,6 +15,7 @@ typedef enum {
     TOKEN_NUMBER,
     TOKEN_DECL,
     TOKEN_STRING,
+    TOKEN_CMP,
     TOKEN_EOF,
 } TokenType;
 
@@ -35,6 +36,7 @@ void free_token(void *lexem);
 bool is_reg(const char *buffer);
 bool is_instr(const char *buffer);
 bool is_number(const char *buffer);
+bool is_cmp(const char *buffer);
 // Checks buffer for incorrect chars, returns a pointer to wrong char in buffer.
 // Returns NULL if everything is correct
 const char *is_incorrect(const char *buffer);

@@ -55,6 +55,10 @@ bool is_number(const char *buffer) {
     return true;
 }
 
+bool is_cmp(const char *buffer) {
+    return string_in_args(buffer, 6, "eq", "nq", "lt", "lq", "gt", "gq");
+}
+
 const char *is_incorrect(const char *buffer) {
     for (const char *c = buffer; *c != '\0'; c++)
         if (*c != '-' && *c != '.' && *c != '_' && !isalnum(*c)) return c;
@@ -185,6 +189,9 @@ Token lexer_get_next_token(Lexer *lexer) {
 
         if (string_in_args(buffer, 4, ".byte", ".word", ".align", ".ascii"))
             return new_token(TOKEN_DECL, buffer, tok_span);
+        if (is_cmp(buffer)) {
+            return new_token(TOKEN_CMP, buffer, tok_span);
+        }
         const char *incorrect_at = is_incorrect(buffer);
         if (incorrect_at != NULL) {
             tok_span.column += tok_span.len - 1;
@@ -200,5 +207,5 @@ Token lexer_get_next_token(Lexer *lexer) {
 void free_lexer(void *lexer_ptr) {
     Lexer lexer = *(Lexer *)lexer_ptr;
     free((void *)lexer.source_file);
-    free_vector(lexer.token_buffer);
+    free_vector(&lexer.token_buffer);
 }

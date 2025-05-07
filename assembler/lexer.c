@@ -76,11 +76,14 @@ static Span calc_span(Span span, const char *buffer) {
 Lexer new_lexer(const char *file_name) {
     vector(Token) token_buffer = NULL;
     vector_reserve(token_buffer, 3);
-
+    char *source = read_whole_file(file_name);
+    if (strlen(source) == 0) {
+        error_empty_file();
+    }
     return (Lexer){
         .i = 0,
         .c = 0,
-        .source_file = read_whole_file(file_name),
+        .source_file = source,
         .current_span = (Span){ 1, 1, 0 },
         .file_name = file_name,
         .token_buffer = token_buffer,

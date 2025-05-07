@@ -21,8 +21,6 @@ bool SHOW_TOKENS = false;
 bool SHOW_IMAGE = false;
 bool ENABLE_COLORS = true;
 
-// TODO: Handle an empty file
-
 void print_help(const char *name);
 
 int main(int argc, char *argv[]) {

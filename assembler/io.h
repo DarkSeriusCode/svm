@@ -56,6 +56,7 @@ void error_invalid_name(const char *name, const char *name_of_what, Span pos);
 void error_negative_alignment_size(Span pos);
 void error_unresolved_name(Symbol name);
 void error_entry_point_with_decls(void);
+void error_empty_file(void);
 
 void warning_number_out_of_bounds(long num, long lower_bound, long upper_bound, Span pos);
 void warning_empty_label(Label lbl);

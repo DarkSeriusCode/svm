@@ -279,7 +279,17 @@ void error_entry_point_with_decls(void) {
     style(STYLE_BOLD);
     printf("%s: ", INPUT_FILE_NAME);
     printf_red("error: ");
-    printf("label "ENTRY_POINT_NAME" cannot contain declarations!\n");
+    printf("Label "ENTRY_POINT_NAME" cannot contain declarations!\n");
+    exit(EXIT_FAILURE);
+}
+
+void error_empty_file(void) {
+    style(STYLE_BOLD);
+    printf("%s: ", INPUT_FILE_NAME);
+    printf_red("error: ");
+    printf("Empty file! Try to write:\n");
+    printf_green(";; This program doesn't do anything special but at least it compiles ;-;\n\
+_main:\n\t;; your code goes here\nret\n")
     exit(EXIT_FAILURE);
 }
 

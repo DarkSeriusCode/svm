@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <assert.h>
 #include "io.h"
 #include "common/vector.h"
 #include "common/arch.h"
@@ -18,7 +19,7 @@ const char *INPUT_FILE_NAME;
 char *OUTPUT_FILE_NAME = "a.out";
 bool SHOW_TOKENS = false;
 bool SHOW_IMAGE = false;
-bool ENABLE_COLORS = 1;
+bool ENABLE_COLORS = true;
 
 // TODO: Handle an empty file
 
@@ -29,10 +30,10 @@ int main(int argc, char *argv[]) {
         print_help(argv[0]);
         return 0;
     }
-    int res = 0;
+    vector(const char *) input_files = NULL;
 
-    INPUT_FILE_NAME = argv[argc - 1];
-    while ( (res = getopt(argc, argv, "hito:")) != -1 ) {
+    int res = 0;
+    while ( (res = getopt(argc, argv, "hcito:")) != -1 ) {
         switch (res) {
             case 'h':
                 print_help(argv[0]);
@@ -45,10 +46,22 @@ int main(int argc, char *argv[]) {
             case 'i':
                 SHOW_IMAGE = true;
                 break;
+            case 'c':
+                ENABLE_COLORS = false;
+                break;
             case 'o':
                 OUTPUT_FILE_NAME = optarg;
+                break;
         }
     }
+    while (optind < argc)
+        vector_push_back(input_files, argv[optind++]);
+
+    if (vector_size(input_files) > 1) {
+        printf("Compilation of multiple files is not supported yet!\n");
+        return 1;
+    }
+    INPUT_FILE_NAME = input_files[vector_size(input_files) - 1];
 
     Image image = new_image();
     vector_push_back_many(image.buffer, byte, 0, 0)
@@ -81,11 +94,13 @@ int main(int argc, char *argv[]) {
         printf("There's no "ENTRY_POINT_NAME"\n");
         exit(EXIT_FAILURE);
     }
+    // TODO: Add function that adds the address of the _main right into the first two bytes of the image
     image_check_unresolved_names(image);
     dump_image(image, OUTPUT_FILE_NAME);
 
     free_parser(&parser);
     free_image(&image);
+    free_vector(&input_files);
 
     return 0;
 }
@@ -98,4 +113,5 @@ void print_help(const char *name) {
     printf("  -o <file>   Place output to <file>\n");
     printf("  -i          Prints information about file\n");
     printf("  -t          Prints token tree\n");
+    printf("  -c          Disables colors in output\n");
 }

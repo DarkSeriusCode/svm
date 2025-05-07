@@ -48,6 +48,7 @@ void check_decl_bounds(Decl decl) {
         check_number_bounds(decl.value, 2);
 }
 
+// TODO: Update
 void check_instr_op_bounds(Instr instr) {
     if (strcmp(instr.name, "load") * strcmp(instr.name, "store") * strcmp(instr.name, "movi") != 0)
         return;
@@ -71,6 +72,8 @@ void analyse_program(vector(Label) labels) {
     foreach(Label, label, labels) {
         if (labels->is_empty) continue;
         if (label->is_data) check_data_label(*label);
+        if (label->is_data && strcmp(label->name, ENTRY_POINT_NAME) == 0)
+            error_entry_point_with_decls();
         else check_code_label(*label);
     }
 }

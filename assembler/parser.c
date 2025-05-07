@@ -31,6 +31,9 @@ void check_single_op(Token op, size_t expected_types_count, ...) {
             return;
         }
     }
+    if (expected_types_count == 1 && types[0] == TOKEN_REG) {
+        error_unknown_register(op.value, op.span);
+    }
     error_invalid_operand_in_vec(op.type, op.span, types);
     va_end(args);
 }
@@ -118,6 +121,9 @@ Token parser_get_checked_token(Parser parser, size_t pos, TokenType tok_type) {
         tok.span.column += tok.span.column + 1;
         tok.span.len = 3;
         error_unexpected_token(tok, tok_type);
+    }
+    if ((tok.type == TOKEN_IDENT || tok.type == TOKEN_INSTR) && tok_type == TOKEN_LABEL) {
+        error_missed_label(tok.type, tok.span);
     }
     if (tok.type != tok_type) {
         error_unexpected_token(tok, tok_type);

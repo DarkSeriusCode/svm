@@ -1,3 +1,6 @@
+// TODO: Remove this comment before commit
+// Я хочу вернуть всё как было, раньше действительно было лучше. По крайней мере, у меня
+// хотя бы были друзья
 #define VECTOR_IMPLEMENTATION
 
 #include <stdbool.h>
@@ -15,6 +18,9 @@ const char *INPUT_FILE_NAME;
 char *OUTPUT_FILE_NAME = "a.out";
 bool SHOW_TOKENS = false;
 bool SHOW_IMAGE = false;
+bool ENABLE_COLORS = 1;
+
+// TODO: Handle an empty file
 
 void print_help(const char *name);
 
@@ -45,7 +51,6 @@ int main(int argc, char *argv[]) {
     }
 
     Image image = new_image();
-    image_add_usage(&image, ENTRY_POINT_NAME, 0);
     vector_push_back_many(image.buffer, byte, 0, 0)
 
     Parser parser = new_parser(INPUT_FILE_NAME);
@@ -70,8 +75,10 @@ int main(int argc, char *argv[]) {
     }
     Symbol *entry_point = image_get_symbol(image, ENTRY_POINT_NAME);
     if (!entry_point || !entry_point->is_resolved) {
-        printf("In %s: Cannot generate a program image: no "ENTRY_POINT_NAME" label!", INPUT_FILE_NAME);
-        printf(" Try add:\n_main:\n<your code goes here>\nret\n");
+        /* printf("In %s: Cannot generate a program image: no "ENTRY_POINT_NAME" label!", INPUT_FILE_NAME); */
+        /* printf(" Try add:\n_main:\n<your code goes here>\nret\n"); */
+        // TODO: Добавить Span в Symbol и сделать сообщение о незарезолвленных именах в обычном стиле
+        printf("There's no "ENTRY_POINT_NAME"\n");
         exit(EXIT_FAILURE);
     }
     image_check_unresolved_names(image);

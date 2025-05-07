@@ -40,10 +40,12 @@ bool is_reg(const char *buffer) {
     return false;
 }
 
+// TODO: Точка внутри идентификатора (refactor)
 bool is_ident(const char *buffer) {
     if (isdigit(buffer[0])) return false;
-    for (size_t i = 0; i < strlen(buffer); i++)
-        if (!(buffer[i] == '_' || isalnum(buffer[i]))) return false;
+    for (size_t i = 0; i < strlen(buffer); i++) {
+        if (!(buffer[i] == '_' || (buffer[i] == '.' && i == 0) || isalnum(buffer[i]))) return false;
+    }
     return true;
 }
 
@@ -165,7 +167,7 @@ Token lexer_get_next_token(Lexer *lexer) {
         lexer_skip_comment(lexer);
         lexer_skip_whitespaces(lexer);
         if (lexer->i >= strlen(lexer->source_file))
-            return new_token(TOKEN_EOF, "", lexer->current_span);
+            return new_token(TOKEN_EOF, "EOF", lexer->current_span);
     } while (isspace(lexer->c) || lexer->c == ';');
 
     while (!isspace(lexer->c)) {

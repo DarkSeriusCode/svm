@@ -25,7 +25,7 @@ const char *token_type_to_str(TokenType type) {
     }
 }
 
-void print_line_with_underline(const char *filename, Span span) {
+void print_line_with_underline(const char *filename, Span span, Color color) {
     char *file_content = read_whole_file(filename);
     long new_lines = 0;
     long lines = (long)span.line;
@@ -48,7 +48,8 @@ void print_line_with_underline(const char *filename, Span span) {
         printf(" ");
     }
     for (size_t i = 0; i < span.len; i++) {
-        printf("~");
+        style(STYLE_BOLD);
+        printf_with_color(color, "~");
     }
     printf("\n");
 }
@@ -76,10 +77,14 @@ void print_image(Image img) {
         for (size_t j = strlen(symbol->name); j < longest_name_len; j++) {
             printf(".");
         }
-        printf(":    0x%04x %s", symbol->address, (symbol->is_resolved) ? "" : "(unresolved)");
+        printf(":    0x%04x", symbol->address);
+        if (!symbol->is_resolved) {
+            style(STYLE_BOLD);
+            printf_red(" (unresolved)");
+        }
         size_t unresolved_usages_count = vector_size(symbol->unresolved_usages);
         if (unresolved_usages_count != 0) {
-            printf("  [used in %ld place%s", unresolved_usages_count,
+            printf_cyan("  [used in %ld place%s", unresolved_usages_count,
                     (unresolved_usages_count == 1) ? "]" : "s]");
         }
         printf("\n");
@@ -95,44 +100,6 @@ void print_image(Image img) {
     printf("\n");
 }
 
-void print_instr(Instr instr) {
-    printf("%s ", instr.name);
-    for (size_t i = 0; i < vector_size(instr.ops); i++) {
-        if (i != vector_size(instr.ops) - 1) {
-            printf(", ");
-        }
-    }
-    printf("\n");
-}
-
-void print_decl(Decl decl) {
-    printf("%s %s\n", decl.kind.value, decl.value.value);
-}
-
-void print_label(Label lbl) {
-    if (lbl.name == NULL) {
-        printf("No label\n");
-        return;
-    }
-    printf("Label `%s`%s:\n", lbl.name, lbl.is_data ? " (data)" : "");
-    if (vector_size(lbl.instructions) == 0) {
-        printf("No content\n");
-        return;
-    }
-    if (!lbl.is_data) {
-        foreach(Instr, instr, lbl.instructions) {
-            printf("    ");
-            print_instr(*instr);
-        }
-    } else {
-        foreach(Decl, decl, lbl.declarations) {
-            printf("    ");
-            print_decl(*decl);
-        }
-    }
-    printf("\n");
-}
-
 void dump_image(Image image, const char *filename) {
     FILE *fp = fopen(filename, "wb");
     fwrite(image.buffer, vector_size(image.buffer), sizeof(byte), fp);
@@ -141,196 +108,194 @@ void dump_image(Image image, const char *filename) {
 
 //-------------------------------------------------------------------------------------------------
 
-static void print_basic_error_message(Span pos, const char *header, const char *footer) {
-    printf("In %s:", INPUT_FILE_NAME);
-    print_span(pos);
-    printf(" %s\n", header);
-    print_line_with_underline(INPUT_FILE_NAME, pos);
-    if (footer) {
-        printf("  %s", footer);
-    }
-}
+static void print_message(const char *lvl, const char *color, Span pos, const char *header, ...) {
+    va_list args;
+    va_start(args, header);
 
-void error_section_not_found(const char *section_name) {
-    printf("In %s: No section `%s`!\n", INPUT_FILE_NAME, section_name);
-    exit(EXIT_FAILURE);
+    style(STYLE_BOLD);
+    printf("%s:", INPUT_FILE_NAME);
+    style(STYLE_NONE);
+    print_span(pos);
+    printf(": ");
+
+    style(STYLE_BOLD);
+    printf_with_color(color, "%s:", lvl);
+    style(STYLE_NONE);
+    printf(" ");
+    vprintf(header, args);
+    printf("\n");
+
+    print_line_with_underline(INPUT_FILE_NAME, pos, color);
+    va_end(args);
 }
+#define print_error(pos, header, ...) \
+    print_message("error", COLOR_RED, pos, header, __VA_ARGS__)
+#define print_note(pos, header, ...) \
+    print_message("note", COLOR_BLUE, pos, header, __VA_ARGS__)
+#define print_warning(pos, header, ...) \
+    print_message("warning", COLOR_YELLOW, pos, header, __VA_ARGS__)
 
 void error_unexpected_token(Token unexpected_token, TokenType expected_token_type) {
-    print_basic_error_message(unexpected_token.span, "Syntax error. Unexpected token!", NULL);
-    printf("  Expected `%s` but got `%s`",
-            token_type_to_str(expected_token_type), unexpected_token.value);
-    if (unexpected_token.type != TOKEN_UNKNOWN && unexpected_token.type != TOKEN_IDENT
-        && unexpected_token.type != TOKEN_INSTR)
-    {
-        printf(" which is `%s`!", token_type_to_str(unexpected_token.type));
+    print_error(unexpected_token.span, "Syntax error. Unexpected token!", NULL);
+    printf("  Expected ");
+    style(STYLE_BOLD);
+    printf_green("%s", token_type_to_str(expected_token_type));
+    printf(" but got `");
+    style(STYLE_BOLD);
+    printf_red("%s", unexpected_token.value);
+    printf("`");
+    if (unexpected_token.type != TOKEN_EOF) {
+        printf(" which is ");
+        style(STYLE_BOLD);
+        printf_yellow("%s", token_type_to_str(unexpected_token.type));
     }
-    printf("\n");
+    printf("!\n");
     exit(EXIT_FAILURE);
 }
 
 void error_unexpected_token_in_args(Token unexpected_token, size_t types_count, ...) {
     va_list args;
     va_start(args, types_count);
-    print_basic_error_message(unexpected_token.span, "Syntax error. Unexpected token!", "Expected");
+    print_error(unexpected_token.span, "Syntax error. Unexpected token!", NULL);
+    printf("  Expected");
     for (size_t i = 0; i < types_count; i++) {
-        printf(" `%s`", token_type_to_str(va_arg(args, TokenType)));
+        style(STYLE_BOLD);
+        printf_green(" %s", token_type_to_str(va_arg(args, TokenType)));
         if (i != types_count - 1) {
             printf(" ");
             printf("or");
         }
     }
-    printf(" but got `%s`", unexpected_token.value);
-    if (unexpected_token.type != TOKEN_UNKNOWN && unexpected_token.type != TOKEN_IDENT
-        && unexpected_token.type != TOKEN_INSTR)
-    {
-        printf(" which is `%s`!", token_type_to_str(unexpected_token.type));
+    printf(" but got `");
+    style(STYLE_BOLD);
+    printf_red("%s", unexpected_token.value);
+    printf("`");
+    if (unexpected_token.type != TOKEN_EOF) {
+        printf(" which is ");
+        style(STYLE_BOLD);
+        printf_yellow("%s", token_type_to_str(unexpected_token.type));
     }
-    printf("\n");
+    printf("!\n");
     va_end(args);
     exit(EXIT_FAILURE);
 }
 
 void error_unexpected_token_in_vec(Token unexpected_token, vector(TokenType) types) {
-    print_basic_error_message(unexpected_token.span, "Syntax error. Unexpected token!", "Expected");
+    print_error(unexpected_token.span, "Syntax error. Unexpected token!", "Expected");
     for (size_t i = 0; i < vector_size(types); i++) {
-        printf(" `%s`", token_type_to_str(types[i]));
+        style(STYLE_BOLD);
+        printf_green(" %s", token_type_to_str(types[i]));
         if (i != vector_size(types) - 1) {
             printf(" ");
             printf("or");
         }
     }
-    printf(" but got `%s`", unexpected_token.value);
-    if (unexpected_token.type != TOKEN_UNKNOWN && unexpected_token.type != TOKEN_IDENT
-        && unexpected_token.type != TOKEN_INSTR)
-    {
-        printf(" which is `%s`!", token_type_to_str(unexpected_token.type));
+    printf(" but got `");
+    style(STYLE_BOLD);
+    printf_red("%s", unexpected_token.value);
+    printf("`");
+    if (unexpected_token.type != TOKEN_EOF) {
+        printf(" which is ");
+        style(STYLE_BOLD);
+        printf_yellow("%s", token_type_to_str(unexpected_token.type));
     }
-    printf("\n");
+    printf("!\n");
     exit(EXIT_FAILURE);
 }
 
 void error_unexpected_comma(Span pos) {
-    print_basic_error_message(pos, "Syntax error. Unexpected comma!", NULL);
+    print_error(pos, "Syntax error. Unexpected comma!", NULL);
     exit(EXIT_FAILURE);
 }
 
 void error_missed_label(TokenType instead_of_label, Span pos) {
-    print_basic_error_message(pos, "Syntax error. Missed label!", NULL);
+    print_error(pos, "Syntax error. Missed label!", NULL);
     if (instead_of_label == TOKEN_IDENT) {
-        printf("  It looks like you forgot ':' in the end of label name.\n");
+        printf("  It looks like you forgot '");
+        style(STYLE_BOLD);
+        printf_green(":");
+        printf("' in the end of label name.\n");
     } else if (instead_of_label == TOKEN_INSTR) {
-        printf("  Instruction cannot be outside a label. Try to write `label:` above this line\n");
+        printf("  Instruction cannot be outside a label. Try to write `");
+        style(STYLE_BOLD);
+        printf_green("label:");
+        printf("` above this line\n");
     }
-    exit(EXIT_FAILURE);
-}
-
-void error_invalid_operand(TokenType invalid_op, TokenType valid_op, Span pos) {
-    print_basic_error_message(pos, "Invalid instruction operand!", NULL);
-    printf("  Expected `%s` but got `%s`!\n",
-            token_type_to_str(valid_op), token_type_to_str(invalid_op));
     exit(EXIT_FAILURE);
 }
 
 void error_invalid_operand_in_vec(TokenType invalid_op, Span pos, vector(TokenType) valid_types) {
-    print_basic_error_message(pos, "Invalid instruction operand!", "Expected");
+    print_error(pos, "Invalid instruction operand!", NULL);
+    printf("  Expected");
     for (size_t i = 0; i < vector_size(valid_types); i++) {
-        printf(" `%s`", token_type_to_str(valid_types[i]));
+        style(STYLE_BOLD);
+        printf_green(" %s", token_type_to_str(valid_types[i]));
         if (i != vector_size(valid_types) - 1) {
-            printf(" ");
-            printf("or");
+            printf(" or");
         }
     }
-    printf(" but got `%s`\n", token_type_to_str(invalid_op));
+    printf(" but got ");
+    style(STYLE_BOLD);
+    printf_red("%s", token_type_to_str(invalid_op));
+    printf("\n");
     exit(EXIT_FAILURE);
 }
 
 void error_unknown_register(const char *reg_name, Span pos) {
-    print_basic_error_message(pos, "Unknown register!", NULL);
+    print_error(pos, "Unknown register!", NULL);
     printf("  Register %s does not exist. Did you spell it right?\n", reg_name);
     exit(EXIT_FAILURE);
 }
 
 void error_invalid_character(Span pos) {
-    print_basic_error_message(pos, "Syntax error. Invalid character", NULL);
+    print_error(pos, "Syntax error. Invalid character", NULL);
     exit(EXIT_FAILURE);
 }
 
 void error_redefinition(const char *name, Span pos) {
-    printf("In %s:", INPUT_FILE_NAME);
-    print_span(pos);
-    printf(" Redefinition of name `%s`\n", name);
-    print_line_with_underline(INPUT_FILE_NAME, pos);
+    print_error(pos, "Redefinition of name `%s`!", name);
     exit(EXIT_FAILURE);
 }
 
-void error_undefined_identifier(Token ident) {
-    printf("In %s:", INPUT_FILE_NAME);
-    print_span(ident.span);
-    printf(" Name '%s' is not declared!\n", ident.value);
-    print_line_with_underline(INPUT_FILE_NAME, ident.span);
-    exit(EXIT_FAILURE);
-}
-
-void error_missed_bracket(const char *bracket, Span pos) {
-    print_basic_error_message(pos, "Syntax error. Missed bracket!", NULL);
-    printf(" Try to add '%s'\n", bracket);
-    exit(EXIT_FAILURE);
-}
-
-void error_invalid_name(const char *name, const char *name_of_what, Span span) {
-    printf("In %s:", INPUT_FILE_NAME);
-    print_span(span);
-    printf(" Invalid name of %s: \"%s\"\n", name_of_what, name);
-    print_line_with_underline(INPUT_FILE_NAME, span);
+void error_invalid_name(const char *name, const char *name_of_what, Span pos) {
+    print_error(pos, "Syntax error. Invalid %s name: `%s`!", name_of_what, name);
     exit(EXIT_FAILURE);
 }
 
 void error_negative_alignment_size(Span pos) {
-    print_basic_error_message(pos, "Invalid value. You cannot use a negative alignment!", NULL);
+    print_error(pos, "Invalid value. You cannot use a negative alignment!", NULL);
     exit(EXIT_FAILURE);
 }
 
 void error_unresolved_name(Symbol name) {
-    printf("In %s:", INPUT_FILE_NAME);
-    printf(" Cannot find definition of name `%s`!\n", name.name);
+    style(STYLE_BOLD);
+    printf("%s: ", INPUT_FILE_NAME);
+    printf_red("error: ");
+    printf("Cannot find definition of name `%s`!\n", name.name);
     exit(EXIT_FAILURE);
 }
 
-void error_entry_point_with_data(void) {
-    printf("In %s: _main label cannot contain data!\n", INPUT_FILE_NAME);
-    exit(EXIT_FAILURE);
-}
-
-void error_usage_of_undefined_label(const char *label_name, Span pos) {
-    printf("In %s:", INPUT_FILE_NAME);
-    print_span(pos);
-    printf(" Usage of undefined name `%s`!\n", label_name);
-    print_line_with_underline(INPUT_FILE_NAME, pos);
+void error_entry_point_with_decls(void) {
+    style(STYLE_BOLD);
+    printf("%s: ", INPUT_FILE_NAME);
+    printf_red("error: ");
+    printf("label "ENTRY_POINT_NAME" cannot contain declarations!\n");
     exit(EXIT_FAILURE);
 }
 
 // ------------------------------------------------------------------------------------------------
 
 void warning_number_out_of_bounds(long num, long lower_bound, long upper_bound, Span pos) {
-    printf("In %s:", INPUT_FILE_NAME);
-    print_span(pos);
-    printf(" warning: Narrowing convertion is possible. Number %ld is out of bounds [%ld;%ld]\n", num,
-            lower_bound, upper_bound);
-    print_line_with_underline(INPUT_FILE_NAME, pos);
+    print_warning(pos, "Narrowing convertion is possible. Number %ld is out of bounds [%ld;%ld]",
+                  num, lower_bound, upper_bound);
 }
 
 void warning_empty_label(Label lbl) {
-    printf("In %s:", INPUT_FILE_NAME);
-    print_span(lbl.span);
-    printf(" warning: Empty label (%s) will be ignored!\n", lbl.name);
+    print_warning(lbl.span, "Empty label (%s) will be ignored!", lbl.name);
 }
 
 // ------------------------------------------------------------------------------------------------
 
 void note_zero_alignment(Span pos) {
-    printf("In %s:", INPUT_FILE_NAME);
-    print_span(pos);
-    printf(" note: You use a zero alignment here.\n");
-    print_line_with_underline(INPUT_FILE_NAME, pos);
+    print_note(pos, "You use a zero alignment here.", NULL);
 }

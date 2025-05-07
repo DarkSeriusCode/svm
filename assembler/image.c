@@ -56,6 +56,8 @@ void image_add_label(Image *img, Label lbl) {
     Symbol *symb = image_get_symbol(*img, lbl.name);
     if (!symb) {
         vector_push_back(img->sym_table, new_symbol(lbl.name, false));
+    } else {
+        error_redefinition(lbl.name, lbl.span);
     }
 }
 

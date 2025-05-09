@@ -40,7 +40,6 @@ bool is_reg(const char *buffer) {
     return false;
 }
 
-// TODO: Точка внутри идентификатора (refactor)
 bool is_ident(const char *buffer) {
     if (isdigit(buffer[0])) return false;
     for (size_t i = 0; i < strlen(buffer); i++) {

@@ -15,7 +15,8 @@ Symbol new_symbol(const char *name, bool is_resolved) {
     assert(name != NULL);
     char *alloced_name = malloc(strlen(name) + 1);
     strcpy(alloced_name, name);
-    vector(word) usgaes = NULL;
+    vector(SymbolUsage) usgaes = NULL;
+
     return (Symbol) {
         .name = alloced_name,
         .address = 0,
@@ -24,8 +25,9 @@ Symbol new_symbol(const char *name, bool is_resolved) {
     };
 }
 
-void symbol_add_usage(Symbol *symbol, word usage) {
-    vector_push_back(symbol->unresolved_usages, usage);
+void symbol_add_usage(Symbol *symbol, word usage, Span pos) {
+    SymbolUsage su = { usage, pos };
+    vector_push_back(symbol->unresolved_usages, su);
 }
 
 void free_symbol(void *entry) {
@@ -78,6 +80,12 @@ void image_codegen(Image *image) {
             image_codegen_code(image, *instr);
         }
     }
+    Symbol *entry_point = image_get_symbol(*image, ENTRY_POINT_NAME);
+    if (!entry_point || !entry_point->is_resolved) {
+        error_no_entry();
+    }
+    image->buffer[0] = entry_point->address >> 8;
+    image->buffer[1] = entry_point->address & 0xFF;
     image_resolve_names(image);
 }
 
@@ -86,14 +94,14 @@ static void image_subst_address(Image *image, word where, word what) {
     image->buffer[where + 1] = what & 0xFF;
 }
 
-void image_add_usage(Image *image, const char *name, word usage_address) {
+void image_add_usage(Image *image, const char *name, Span name_pos, word usage_address) {
     Symbol *definition = image_get_symbol(*image, name);
     if (!definition) {
         Symbol new = new_symbol(name, false);
-        symbol_add_usage(&new, usage_address);
+        symbol_add_usage(&new, usage_address, name_pos);
         vector_push_back(image->sym_table, new);
     } else {
-        symbol_add_usage(definition, usage_address);
+        symbol_add_usage(definition, usage_address, name_pos);
     }
 }
 
@@ -112,8 +120,8 @@ void image_add_definition(Image *image, const char *name, word def_address) {
 void image_resolve_names(Image *image) {
     foreach(Symbol, symb, image->sym_table) {
         if (symb->is_resolved) {
-            foreach(word, addr, symb->unresolved_usages) {
-                image_subst_address(image, *addr, symb->address);
+            foreach(SymbolUsage, usgae, symb->unresolved_usages) {
+                image_subst_address(image, usgae->address, symb->address);
             }
             vector_clean(symb->unresolved_usages);
         }
@@ -175,7 +183,7 @@ static void append_register(unsigned long *buffer, size_t *buffer_size, Token re
 }
 
 static void append_ident(unsigned long *buffer, size_t *buffer_size, Image *image, Token ident) {
-    image_add_usage(image, ident.value, image_content_size(*image) + *buffer_size / 8);
+    image_add_usage(image, ident.value, ident.span, image_content_size(*image) + *buffer_size / 8);
     *buffer <<= 16;
     *buffer_size += 16;
 }

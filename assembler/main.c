@@ -1,6 +1,3 @@
-// TODO: Remove this comment before commit
-// Я хочу вернуть всё как было, раньше действительно было лучше. По крайней мере, у меня
-// хотя бы были друзья
 #define VECTOR_IMPLEMENTATION
 
 #include <stdbool.h>
@@ -78,21 +75,11 @@ int main(int argc, char *argv[]) {
         image_add_label(&image, lbl);
     }
     analyse_program(image.labels);
-
     image_codegen(&image);
 
     if (SHOW_IMAGE) {
         print_image(image);
     }
-    Symbol *entry_point = image_get_symbol(image, ENTRY_POINT_NAME);
-    if (!entry_point || !entry_point->is_resolved) {
-        /* printf("In %s: Cannot generate a program image: no "ENTRY_POINT_NAME" label!", INPUT_FILE_NAME); */
-        /* printf(" Try add:\n_main:\n<your code goes here>\nret\n"); */
-        // TODO: Добавить Span в Symbol и сделать сообщение о незарезолвленных именах в обычном стиле
-        printf("There's no "ENTRY_POINT_NAME"\n");
-        exit(EXIT_FAILURE);
-    }
-    // TODO: Add function that adds the address of the _main right into the first two bytes of the image
     image_check_unresolved_names(image);
     dump_image(image, OUTPUT_FILE_NAME);
 

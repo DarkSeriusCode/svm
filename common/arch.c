@@ -75,15 +75,6 @@ byte get_instr_opcode(const char *instr_name) {
     return opcode;
 }
 
-// TODO: Get rid of this
-size_t get_instr_size(const char *instr_name) {
-    if (strcmp(instr_name, "load") * strcmp(instr_name, "store")
-        * strcmp(instr_name, "movi") == 0) return 4;
-    if (strcmp(instr_name, "call") == 0) return 3;
-    if (strcmp(instr_name, "ret") == 0) return 1;
-    return 2;
-}
-
 byte get_register_code(const char *reg_name) {
     assert(in_register_set(reg_name));
     if (strcmp(reg_name, "r0") == 0) return 0b0000;

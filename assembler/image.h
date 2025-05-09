@@ -6,14 +6,19 @@
 #include "common/vector.h"
 
 typedef struct {
+    word address;
+    Span pos;
+} SymbolUsage;
+
+typedef struct {
     char *name;
     word address;
-    vector(word) unresolved_usages; // all places where this name is used
+    vector(SymbolUsage) unresolved_usages; // all places where this name is used
     bool is_resolved;
 } Symbol;
 
 Symbol new_symbol(const char *name, bool is_resolved);
-void symbol_add_usage(Symbol *symbol, word usage);
+void symbol_add_usage(Symbol *symbol, word usage, Span pos);
 void free_symbol(void *entry);
 
 typedef struct {
@@ -26,7 +31,7 @@ Image new_image(void);
 
 void image_add_label(Image *img, Label lbl);
 void image_codegen(Image *img);
-void image_add_usage(Image *image, const char *name, word usage_address);
+void image_add_usage(Image *image, const char *name, Span name_pos, word usage_address);
 void image_add_definition(Image *image, const char *name, word def_address);
 void image_resolve_names(Image *image);
 Symbol *image_get_symbol(Image image, const char *name);

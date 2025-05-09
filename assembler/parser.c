@@ -34,6 +34,9 @@ void check_single_op(Token op, size_t expected_types_count, ...) {
     if (expected_types_count == 1 && types[0] == TOKEN_REG) {
         error_unknown_register(op.value, op.span);
     }
+    if (op.type == TOKEN_UNKNOWN) {
+        error_invalid_name(op.value, "identifier", op.span);
+    }
     error_invalid_operand_in_vec(op.type, op.span, types);
     va_end(args);
 }

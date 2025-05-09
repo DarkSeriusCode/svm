@@ -268,10 +268,7 @@ void error_negative_alignment_size(Span pos) {
 }
 
 void error_unresolved_name(Symbol name) {
-    style(STYLE_BOLD);
-    printf("%s: ", INPUT_FILE_NAME);
-    printf_red("error: ");
-    printf("Cannot find definition of name `%s`!\n", name.name);
+    print_error(name.unresolved_usages[0].pos, "Cannot find definition of name `%s`!", name.name);
     exit(EXIT_FAILURE);
 }
 
@@ -288,8 +285,17 @@ void error_empty_file(void) {
     printf("%s: ", INPUT_FILE_NAME);
     printf_red("error: ");
     printf("Empty file! Try to write:\n");
-    printf_green(";; This program doesn't do anything special but at least it compiles ;-;\n\
-_main:\n\t;; your code goes here\nret\n")
+    printf_green(";; This program doesn't do anything special but at least it compiles ;-;\n"
+ENTRY_POINT_NAME":\n\t;; your code goes here\nret\n")
+    exit(EXIT_FAILURE);
+}
+
+void error_no_entry(void) {
+    style(STYLE_BOLD);
+    printf("%s: ", INPUT_FILE_NAME);
+    printf_red("error: ");
+    printf("There's no "ENTRY_POINT_NAME" label! Try to write:\n");
+    printf_green(ENTRY_POINT_NAME":\n\t;; your code goes here\nret\n");
     exit(EXIT_FAILURE);
 }
 

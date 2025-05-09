@@ -36,7 +36,6 @@ bool in_two_ops_instruction_set(const char *inst);
 bool in_register_set(const char *inst);
 
 byte get_instr_opcode(const char *instr_name);
-size_t get_instr_size(const char *instr_name);
 byte get_register_code(const char *reg_name);
 
 #endif

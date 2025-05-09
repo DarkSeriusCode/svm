@@ -7,6 +7,8 @@
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
+#define UNUSED(x) (void)(x)
+
 bool string_in_args(const char *str, size_t count, ...);
 
 #endif

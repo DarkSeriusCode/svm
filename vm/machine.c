@@ -1,9 +1,11 @@
 #include "machine.h"
 #include "common/io.h"
 #include "common/arch.h"
+#include "io.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 word read_word_as_big_endian(byte *memory) {
     word w = memory[0];
@@ -51,7 +53,24 @@ static word read_bits(unsigned long *buffer, size_t *read_bits_count, size_t siz
 
 // ------------------------------------------------------------------------------------------------
 
-VM new_vm(byte *memory, size_t program_size) {
+// Just a wraper around free_device that also calls dev.fini()
+static void unload_port(void *port) {
+    Device dev = ((Port *)port)->device;
+    word code = dev.fini();
+    if (code != 0) {
+        error_dev_close(dev.filename, code);
+    }
+    free_device(&dev);
+}
+
+VM new_vm(const char *program_file) {
+    byte *memory = malloc(MEMORY_SIZE);
+    memset(memory, 0, MEMORY_SIZE);
+    size_t program_size = load_program(memory, MEMORY_SIZE, program_file);
+
+    vector(Port) ports = NULL;
+    vector_set_destructor(ports, unload_port);
+
     VM vm = {
         .program_size = program_size,
         .stack_begging = program_size + STACK_OFFSET + STACK_SIZE,
@@ -59,11 +78,42 @@ VM new_vm(byte *memory, size_t program_size) {
         .cf = 0,
         .sp = program_size + STACK_OFFSET + STACK_SIZE,
         .ip = read_word_as_big_endian(memory),
+        .ports = ports,
     };
     memset(vm.general_registers, 0, sizeof(vm.general_registers));
     push_in_stack(&vm, program_size);
 
     return vm;
+}
+
+void free_vm(void *vm) {
+    VM *v = (VM *)vm;
+    free_vector(&v->ports);
+    free(v->memory);
+}
+
+Device *vm_get_device_by_port_id(VM vm, word port_id) {
+    Port *port = NULL;
+    foreach(Port, p, vm.ports) {
+        if (p->id == port_id) {
+            port = p;
+            break;
+        }
+    }
+    if (!port)
+        error_no_device_attached(port_id);
+    return &port->device;
+}
+
+void vm_load_device(VM *vm, const char *device_file) {
+    static word port_id = 1;
+    Device dev = new_device(device_file);
+    Port p = { port_id++, dev };
+    vector_push_back(vm->ports, p);
+    word code = dev.init(vm->memory);
+    if (code != 0) {
+        error_dev_open(device_file, code);
+    }
 }
 
 int exec_instr(VM *vm) {
@@ -154,13 +204,14 @@ int exec_instr(VM *vm) {
             skip_alignment(&buffer, &read_bits_count, 3);
             word func_addr = read_number(&buffer, &read_bits_count);
             word ret_addr = vm->ip + 3;
-            call_function(vm, func_addr, ret_addr);
+            push_in_stack(vm, ret_addr);
+            vm->ip = func_addr;
             return 1;
         }; break;
 
         // ret
         case 0b01100: {
-            return_from_function(vm);
+            vm->ip = pop_from_stack(vm);
             return 1;
         }; break;
 
@@ -202,9 +253,28 @@ int exec_instr(VM *vm) {
             }
         }; break;
 
+        // out
+        case 0b10101: {
+            skip_alignment(&buffer, &read_bits_count, 3);
+            word port_id = read_number(&buffer, &read_bits_count);
+            word addr = read_number(&buffer, &read_bits_count);
+            word size = read_number(&buffer, &read_bits_count);
+            // TODO: Handle an output
+            vm_get_device_by_port_id(*vm, port_id)->write(addr, size);
+        }; break;
+
+        // in
+        case 0b10110: {
+            skip_alignment(&buffer, &read_bits_count, 3);
+            word port_id = read_number(&buffer, &read_bits_count);
+            word addr = read_number(&buffer, &read_bits_count);
+            word size = read_number(&buffer, &read_bits_count);
+            vm_get_device_by_port_id(*vm, port_id)->read(addr, size);
+        }; break;
+
         default:
             printf("Reached unknown instruction with opcode: 0x%02x\n", opcode);
-            dump_vm(*vm, vm->program_size, "instr_unknown.dump");
+            dump_vm(*vm, "instr_unknown.dump");
             exit(1);
     }
     size_t read_bytes_count = read_bits_count / 8;
@@ -218,7 +288,7 @@ int exec_instr(VM *vm) {
 void push_in_stack(VM *vm, word value) {
     if (vm->stack_begging - vm->sp >= STACK_SIZE) {
         fprintf(stderr, "Stack overflow (vm dumped)\n");
-        dump_vm(*vm, vm->program_size, "stackowerflow.dump");
+        dump_vm(*vm, "stackowerflow.dump");
         exit(1);
     }
     vm->memory[vm->sp--] = value >> 8;
@@ -228,71 +298,10 @@ void push_in_stack(VM *vm, word value) {
 word pop_from_stack(VM *vm) {
     if (vm->sp >= vm->stack_begging) {
         fprintf(stderr, "Stack is empty (vm dumped)\n");
-        dump_vm(*vm, vm->program_size, "stackisempty.dump");
+        dump_vm(*vm, "stackisempty.dump");
         exit(1);
     }
     word value = vm->memory[++vm->sp];
     value |= vm->memory[++vm->sp];
     return value;
-}
-
-void call_function(VM *vm, word func_addr, word ret_addr) {
-    push_in_stack(vm, ret_addr);
-    vm->ip = func_addr;
-}
-
-void return_from_function(VM *vm) {
-    vm->ip = pop_from_stack(vm);
-}
-
-// ------------------------------------------------------------------------------------------------
-
-void dump_vm(VM vm, size_t memory_size_to_dump, const char *filename) {
-    FILE *fp = fopen(filename, "w");
-    if (fp == NULL) {
-        error_file_doesnot_exist(filename);
-    }
-
-    fprintf(fp, "Registers:\n");
-    for (size_t i = 0; i < 4; i++) {
-        fprintf(fp, "r%lu: 0x%04x    ", i, vm.general_registers[i]);
-        fprintf(fp, "r%lu: 0x%04x    ", i + 4, vm.general_registers[i + 4]);
-        if (i + 8 <= 12) {
-            fprintf(fp, "r%lu: 0x%04x", i + 8, vm.general_registers[i + 8]);
-        }
-        // Only for 13th
-        if (i == 0) {
-            fprintf(fp, "    r%d: 0x%04x", 12, vm.general_registers[12]);
-        }
-        fprintf(fp, "\n");
-    }
-    fprintf(fp, "--------\n");
-    fprintf(fp, "ip: 0x%04x\n", vm.ip);
-    fprintf(fp, "cf: 0x%04x\n", vm.cf);
-    fprintf(fp, "sp: 0x%04x\n", vm.sp);
-
-    fprintf(fp, "\n\nMemory");
-    if (memory_size_to_dump == 0) {
-        fprintf(fp, ":\nMemory was not dumped\n");
-    } else {
-        fprintf(fp, " (%lu bytes):\n", memory_size_to_dump);
-    }
-    for (size_t i = 0; i < memory_size_to_dump; i++) {
-        if (i != 0 && i % 16 == 0) {
-            fprintf(fp, "\n");
-        }
-        fprintf(fp, "%02x ", vm.memory[i]);
-    }
-
-    fprintf(fp, "\n\nStack\n");
-    size_t counter = 0;
-    for (byte *b = vm.memory + vm.stack_begging; b > vm.memory + vm.sp; b--, counter++) {
-        if (counter != 0 && counter % 16 == 0) {
-            fprintf(fp, "\n");
-        }
-        fprintf(fp, "%02x ", *b);
-    }
-    fprintf(fp, "\n");
-
-    fclose(fp);
 }

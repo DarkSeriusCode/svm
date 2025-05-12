@@ -19,12 +19,7 @@ char *read_whole_file(const char *filename) {
     return buffer;
 }
 
-void print_byte(byte num) {
-    for (int i = sizeof(num) * 8 - 1; i >= 0; i--) {
-        putchar((num & (1U << i)) ? '1' : '0');
-    }
-}
-
+// TODO: replace with read_whole_file
 size_t load_program(byte *memory, size_t memory_size, const char *filename) {
     FILE *fp = fopen(filename, "rb");
     if (!fp) {

@@ -1,5 +1,6 @@
 CC = gcc
 CC_FLAGS = -Wall -Wextra -I.
+DEV_FLAGS = -fPIC -shared
 
 DEBUG ?= true
 ifeq ($(DEBUG), false)
@@ -11,10 +12,11 @@ endif
 SVM_DIR = vm
 SASM_DIR = assembler
 COMMON_DIR = common
+DEV_DIR = dev
 
-all: assembler vm
+all: assembler vm dev
 
-$(shell mkdir -p build build/obj build/obj/sasm build/obj/svm build/obj/common)
+$(shell mkdir -p build build/obj build/obj/sasm build/obj/svm build/obj/common build/dev)
 
 HEADERS=
 
@@ -56,6 +58,16 @@ build/svm: $(SVM_OBJS) build/common.a
 
 .PHONY: vm
 vm: build/svm
+
+# -------------------------------------------------------------------------------------------------
+
+DEVS = $(patsubst $(DEV_DIR)/%.c, build/dev/%.so, $(wildcard $(DEV_DIR)/*.c))
+
+build/dev/%.so: $(DEV_DIR)/%.c
+	$(CC) $(DEV_FLAGS) $(CC_FLAGS) $< -o $@
+
+.PHONY: dev
+dev: $(DEVS)
 
 # -------------------------------------------------------------------------------------------------
 

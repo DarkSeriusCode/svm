@@ -12,6 +12,8 @@
 #include "parser.h"
 #include "analysis.h"
 
+// TODO: Check anal at all
+
 const char *INPUT_FILE_NAME;
 char *OUTPUT_FILE_NAME = "a.out";
 bool SHOW_TOKENS = false;

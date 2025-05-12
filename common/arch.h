@@ -15,9 +15,9 @@ typedef unsigned short word;
 
 // a == b -> 001 (EQ)
 // a != b -> 000 (NQ)
-// a < b -> 100 (LT)
+// a < b  -> 100 (LT)
 // a <= b -> 101 (LQ)
-// a > b -> 110 (GT)
+// a > b  -> 110 (GT)
 // a >= b -> 111 (GQ)
 typedef enum {
     CMP_EQ = 0b001,
@@ -33,6 +33,7 @@ bool in_instruction_set(const char *inst);
 bool in_zero_op_instruction_set(const char *inst);
 bool in_one_op_instruction_set(const char *inst);
 bool in_two_ops_instruction_set(const char *inst);
+bool in_three_ops_instruction_set(const char *inst);
 bool in_register_set(const char *inst);
 
 byte get_instr_opcode(const char *instr_name);

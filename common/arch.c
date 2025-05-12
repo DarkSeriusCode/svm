@@ -8,6 +8,7 @@ const char *ZERO_OP_INSTRUCTIONS[] = { "ret" };
 const char *ONE_OP_INSTRUCTIONS[] = { "push", "pop", "call", "not", "jmp" };
 const char *TWO_OPS_INSTRUCTIONS[] = { "load", "store", "mov", "add", "sub", "mul", "div",
                                        "and", "or", "xor", "shl", "shr", "cmp", "jif" };
+const char *THREE_OPS_INSTRUCTIONS[] = { "out", "in" };
 const char *REGISTER_SET[] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10",
                                "r11", "r12",  "sp", "ip", "cf" };
 
@@ -23,7 +24,7 @@ Cmp cmp_from_string(const char *string) {
 
 bool in_instruction_set(const char *inst) {
     return in_zero_op_instruction_set(inst) || in_one_op_instruction_set(inst)
-           || in_two_ops_instruction_set(inst);
+           || in_two_ops_instruction_set(inst) || in_three_ops_instruction_set(inst);
 }
 
 bool in_zero_op_instruction_set(const char *inst) {
@@ -41,6 +42,12 @@ bool in_one_op_instruction_set(const char *inst) {
 bool in_two_ops_instruction_set(const char *inst) {
     for (size_t i = 0; i < sizeof(TWO_OPS_INSTRUCTIONS)/sizeof(TWO_OPS_INSTRUCTIONS[0]); i++)
         if (strcmp(TWO_OPS_INSTRUCTIONS[i], inst) == 0) return true;
+    return false;
+}
+
+bool in_three_ops_instruction_set(const char *inst) {
+    for (size_t i = 0; i < sizeof(THREE_OPS_INSTRUCTIONS)/sizeof(THREE_OPS_INSTRUCTIONS[0]); i++)
+        if (strcmp(THREE_OPS_INSTRUCTIONS[i], inst) == 0) return true;
     return false;
 }
 
@@ -72,6 +79,8 @@ byte get_instr_opcode(const char *instr_name) {
     if (strcmp(instr_name, "jmp") == 0) opcode = 0b10010;
     if (strcmp(instr_name, "cmp") == 0) opcode = 0b10011;
     if (strcmp(instr_name, "jif") == 0) opcode = 0b10100;
+    if (strcmp(instr_name, "out") == 0) opcode = 0b10101;
+    if (strcmp(instr_name, "in") == 0) opcode = 0b10110;
     return opcode;
 }
 

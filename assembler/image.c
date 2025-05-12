@@ -247,6 +247,17 @@ void image_codegen_code(Image *image, Instr instr) {
         append_cmp(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
         append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[1]);
     }
+    // TODO:Ограничить размер портов до 1 байта
+    if (string_in_args(instr.name, 2, "in", "out")) {
+        append_alignment(&instr_bin_repr, &instr_bit_size, 3);
+        append_number(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
+        if (instr.ops[1].type == TOKEN_IDENT) {
+            append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[1]);
+        } else {
+            append_number(&instr_bin_repr, &instr_bit_size, instr.ops[1]);
+        }
+        append_number(&instr_bin_repr, &instr_bit_size, instr.ops[2]);
+    }
 
     size_t instr_byte_size = instr_bit_size / 8;
     if (instr_bit_size / 8.0 > (int)(instr_bit_size / 8.0)) {
@@ -254,7 +265,7 @@ void image_codegen_code(Image *image, Instr instr) {
     }
     instr_bin_repr <<= instr_byte_size * 8 - instr_bit_size;
     for (int i = instr_byte_size - 1; i >= 0; i--) {
-        byte mask = 0xff;
+        unsigned long mask = 0xff;
         byte b = (instr_bin_repr & (mask << i * 8)) >> i * 8;
         vector_push_back(image->buffer, b);
     }

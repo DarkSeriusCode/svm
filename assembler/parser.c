@@ -64,6 +64,12 @@ void instr_check_ops(Instr instr) {
         check_single_op(ops[0], 1, TOKEN_CMP);
         check_single_op(ops[1], 1, TOKEN_IDENT);
     }
+    // TODO: Add anal
+    if (string_in_args(instr_name, 2, "out", "in")) {
+        check_single_op(ops[0], 1, TOKEN_NUMBER);
+        check_single_op(ops[1], 2, TOKEN_NUMBER, TOKEN_IDENT);
+        check_single_op(ops[2], 1, TOKEN_NUMBER);
+    }
     // ret instruction doesn't need a check (it has no params ;-;)
 }
 
@@ -210,6 +216,9 @@ void parse_instruction(Parser *parser, Label *label) {
     }
     if (in_two_ops_instruction_set(instr_token.value)) {
         amount_of_ops = 2;
+    }
+    if (in_three_ops_instruction_set(instr_token.value)) {
+        amount_of_ops = 3;
     }
     vector(Token) ops = NULL;
     for (int i = 0; i < amount_of_ops; i++) {

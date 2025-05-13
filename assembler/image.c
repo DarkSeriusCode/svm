@@ -160,6 +160,14 @@ void image_codegen_data(Image *image, Decl decl) {
     }
 }
 
+static void append_byte(unsigned long *buffer, size_t *buffer_size, Token number) {
+    char *strend;
+    long num = strtol(number.value, &strend, 10);
+    *buffer <<= 8;
+    *buffer |= num & 0xFF;
+    *buffer_size += 8;
+}
+
 static void append_number(unsigned long *buffer, size_t *buffer_size, Token number) {
     char *strend;
     long num = strtol(number.value, &strend, 10);
@@ -247,10 +255,9 @@ void image_codegen_code(Image *image, Instr instr) {
         append_cmp(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
         append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[1]);
     }
-    // TODO:Ограничить размер портов до 1 байта
     if (string_in_args(instr.name, 2, "in", "out")) {
         append_alignment(&instr_bin_repr, &instr_bit_size, 3);
-        append_number(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
+        append_byte(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
         if (instr.ops[1].type == TOKEN_IDENT) {
             append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[1]);
         } else {

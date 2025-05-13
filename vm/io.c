@@ -40,6 +40,16 @@ void error_no_device_attached(word port_id) {
     exit(EXIT_FAILURE);
 }
 
+void error_no_free_ports(void) {
+    print_error("cannot attach the device: no free ports");
+    exit(EXIT_FAILURE);
+}
+
+void error_using_preserve_device(void) {
+    print_error("device 0 is reserved");
+    exit(EXIT_FAILURE);
+}
+
 void dump_vm(VM vm, const char *filename) {
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) {
@@ -51,7 +61,7 @@ void dump_vm(VM vm, const char *filename) {
         fprintf(fp, "No connected devices\n");
     }
     foreach(Port, port, vm.ports) {
-        fprintf(fp, "%d. %s\n", port->id, port->device.filename);
+        fprintf(fp, "%s -> %d\n", port->device.filename, port->id);
     }
 
     fprintf(fp, "\nRegisters:\n");

@@ -9,6 +9,12 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+// I don't know how to name it better, so it is what it is
+typedef struct {
+    const char *device_file;
+    int port_id; // May be negative. -1 means free port
+} DeviceFileAndPort;
+
 const char *INPUT_FILE_NAME;
 bool ENABLE_COLORS = true;
 
@@ -20,16 +26,23 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    vector(char *) device_files = NULL;
+    vector(DeviceFileAndPort) devices_to_attach = NULL;
     int res = 0;
     while ( (res = getopt(argc, argv, "hd:")) != -1 ) {
         switch (res) {
             case 'h':
                 print_help(argv[0]);
                 exit(0);
-            case 'd':
-                vector_push_back(device_files, optarg);
-                break;
+            case 'd': {
+                char *unused;
+                char *file = strtok(optarg, ":");
+                char *port = strtok(NULL, ":");
+                int port_id = -1;
+                if (port)
+                    port_id = strtol(port, &unused, 10);
+                DeviceFileAndPort p = (DeviceFileAndPort){ file, port_id };
+                vector_push_back(devices_to_attach, p);
+            }; break;
         }
     }
     INPUT_FILE_NAME = argv[optind];
@@ -39,15 +52,15 @@ int main(int argc, char *argv[]) {
     }
 
     VM vm = new_vm(INPUT_FILE_NAME);
-    foreach(char *, device_file, device_files) {
-        vm_load_device(&vm, *device_file);
+    foreach(DeviceFileAndPort, port, devices_to_attach) {
+        vm_load_device(&vm, port->device_file, port->port_id);
     }
     while (exec_instr(&vm)) {}
 
     dump_vm(vm, "vm.dump");
 
     free_vm(&vm);
-    free_vector(&device_files);
+    free_vector(&devices_to_attach);
 
     return 0;
 }

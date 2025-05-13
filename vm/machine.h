@@ -30,8 +30,9 @@ typedef struct {
 VM new_vm(const char *program_file);
 void free_vm(void *vm);
 
-Device *vm_get_device_by_port_id(VM vm, word port_id);
-void vm_load_device(VM *vm, const char *device_file);
+void vm_load_device(VM *vm, const char *device_file, int port_id);
+Port *vm_get_port(VM vm, byte port_id);
+byte vm_get_free_port_id(VM vm);
 
 // Returns 0 if the last instruction was executed, otherwise returns 1
 int exec_instr(VM *vm);

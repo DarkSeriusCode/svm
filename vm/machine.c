@@ -34,6 +34,7 @@ static word read_bits(unsigned long *buffer, size_t *read_bits_count, size_t siz
 #define read_register(buffer, read_count)  read_bits(buffer, read_count, REGISTER_BIT_SIZE)
 #define read_flag(buffer, read_count)      read_bits(buffer, read_count, 1)
 #define read_number(buffer, read_count)    read_bits(buffer, read_count, NUMBER_BIT_SIZE)
+#define read_byte(buffer, read_count)      read_bits(buffer, read_count, 8)
 #define skip_alignment(buffer, read_count, alignment)  read_bits(buffer, read_count, alignment)
 
 // Perform binary operation in instructions like <reg> <reg/imm>
@@ -65,7 +66,6 @@ static void unload_port(void *port) {
 
 VM new_vm(const char *program_file) {
     byte *memory = malloc(MEMORY_SIZE);
-    memset(memory, 0, MEMORY_SIZE);
     size_t program_size = load_program(memory, MEMORY_SIZE, program_file);
 
     vector(Port) ports = NULL;
@@ -92,7 +92,25 @@ void free_vm(void *vm) {
     free(v->memory);
 }
 
-Device *vm_get_device_by_port_id(VM vm, word port_id) {
+void vm_load_device(VM *vm, const char *device_file, int port_id) {
+    byte id = port_id;
+    if (port_id == -1) {
+        id = vm_get_free_port_id(*vm);
+        printf("Device %s attached to port %d\n", device_file, port_id);
+    }
+    if (id == 0) {
+        error_using_preserve_device();
+    }
+    Device dev = new_device(device_file);
+    Port p = { id, dev };
+    vector_push_back(vm->ports, p);
+    word code = dev.init(vm->memory);
+    if (code != 0) {
+        error_dev_open(device_file, code);
+    }
+}
+
+Port *vm_get_port(VM vm, byte port_id) {
     Port *port = NULL;
     foreach(Port, p, vm.ports) {
         if (p->id == port_id) {
@@ -100,20 +118,18 @@ Device *vm_get_device_by_port_id(VM vm, word port_id) {
             break;
         }
     }
-    if (!port)
-        error_no_device_attached(port_id);
-    return &port->device;
+    return port;
 }
 
-void vm_load_device(VM *vm, const char *device_file) {
-    static word port_id = 1;
-    Device dev = new_device(device_file);
-    Port p = { port_id++, dev };
-    vector_push_back(vm->ports, p);
-    word code = dev.init(vm->memory);
-    if (code != 0) {
-        error_dev_open(device_file, code);
+byte vm_get_free_port_id(VM vm) {
+    for (word id = 1; id < 256; id++) {
+        Port *p = vm_get_port(vm, id);
+        if (!p) {
+            return id;
+        }
     }
+    error_no_free_ports();
+    return 0; // UNREACHABLE
 }
 
 int exec_instr(VM *vm) {
@@ -256,26 +272,33 @@ int exec_instr(VM *vm) {
         // out
         case 0b10101: {
             skip_alignment(&buffer, &read_bits_count, 3);
-            word port_id = read_number(&buffer, &read_bits_count);
+            byte port_id = read_byte(&buffer, &read_bits_count);
             word addr = read_number(&buffer, &read_bits_count);
             word size = read_number(&buffer, &read_bits_count);
-            // TODO: Handle an output
-            vm_get_device_by_port_id(*vm, port_id)->write(addr, size);
+            Port *port = vm_get_port(*vm, port_id);
+            if (!port)
+                error_no_device_attached(port_id);
+            word code = port->device.write(addr, size);
+            vm->general_registers[0] = code;
         }; break;
 
         // in
         case 0b10110: {
             skip_alignment(&buffer, &read_bits_count, 3);
-            word port_id = read_number(&buffer, &read_bits_count);
+            byte port_id = read_byte(&buffer, &read_bits_count);
             word addr = read_number(&buffer, &read_bits_count);
             word size = read_number(&buffer, &read_bits_count);
-            vm_get_device_by_port_id(*vm, port_id)->read(addr, size);
+            Port *port = vm_get_port(*vm, port_id);
+            if (!port)
+                error_no_device_attached(port_id);
+            word code = port->device.read(addr, size);
+            vm->general_registers[0] = code;
         }; break;
 
         default:
             printf("Reached unknown instruction with opcode: 0x%02x\n", opcode);
             dump_vm(*vm, "instr_unknown.dump");
-            exit(1);
+            exit(EXIT_FAILURE);
     }
     size_t read_bytes_count = read_bits_count / 8;
     if (read_bits_count / 8.0 > (int)(read_bits_count / 8.0)) {

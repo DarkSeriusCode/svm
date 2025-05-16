@@ -1,4 +1,8 @@
 # SVM (Simple virtual machine)
+
+> [!WARNING]
+> This project is unfinished so many features may not work properly!
+
 SVM is a 16-bit virtual machine based on my own architecture. This project was created for my
 educational purposes. The goal of the project is to develop my own architecture and create the VM
 without any third-party dependencies. Currently, most features are not yet implemented.

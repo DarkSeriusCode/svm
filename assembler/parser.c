@@ -64,7 +64,6 @@ void instr_check_ops(Instr instr) {
         check_single_op(ops[0], 1, TOKEN_CMP);
         check_single_op(ops[1], 1, TOKEN_IDENT);
     }
-    // TODO: Add anal
     if (string_in_args(instr_name, 2, "out", "in")) {
         check_single_op(ops[0], 1, TOKEN_NUMBER);
         check_single_op(ops[1], 2, TOKEN_NUMBER, TOKEN_IDENT);
@@ -169,7 +168,6 @@ Label parse_label(Parser *parser) {
     label_set_name(&label, lbl_tok.value);
     label.span = lbl_tok.span;
     if (parser->tokens[parser->idx].type == TOKEN_LABEL) {
-        label.is_empty = true;
         return label;
     }
     Token tok = parser->tokens[parser->idx];

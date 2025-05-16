@@ -1,4 +1,5 @@
 #include "analysis.h"
+#include "common/utils.h"
 #include "io.h"
 #include <assert.h>
 #include <limits.h>
@@ -49,8 +50,13 @@ void check_decl_bounds(Decl decl) {
 }
 
 void check_instr_op_bounds(Instr instr) {
-    if (vector_size(instr.ops) > 0 && instr.ops[1].type != TOKEN_REG)
+    if (strcmp(instr.name, "call") == 0) return;
+
+    if (string_in_args(instr.name, 2, "in", "out")) {
+        check_number_bounds(instr.ops[0], 1);
+    } else if (vector_size(instr.ops) == 2 && instr.ops[1].type != TOKEN_REG){
         check_number_bounds(instr.ops[1], 2);
+    }
 }
 
 void check_data_label(Label label) {

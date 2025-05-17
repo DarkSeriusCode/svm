@@ -7,7 +7,13 @@
 #include <assert.h>
 
 Decl new_decl(Token decl_kind, Token decl_value, Span span) {
-    return (Decl){ decl_kind, decl_value, span };
+    return (Decl){ copy_token(decl_kind), copy_token(decl_value), span };
+}
+
+void free_decl(void *decl) {
+    Decl *d = (Decl *)decl;
+    free_token(&d->kind);
+    free_token(&d->value);
 }
 
 Instr new_instr(const char *name, vector(Token) ops, Span pos) {
@@ -18,6 +24,11 @@ Instr new_instr(const char *name, vector(Token) ops, Span pos) {
         vector_push_back(new_ops, copy_token(*op));
     }
     return (Instr){ allocated_str, new_ops, pos };
+}
+
+void free_instr(void *instr) {
+    Instr *i = (Instr *)instr;
+    free_vector(&i->ops);
 }
 
 void check_single_op(Token op, size_t expected_types_count, ...) {
@@ -95,8 +106,10 @@ void free_label(void *label) {
     if (lbl.name)
         free((void *)lbl.name);
     if (lbl.is_data) {
+        vector_set_destructor(lbl.declarations, free_decl);
         free_vector(&lbl.declarations);
     } else {
+        vector_set_destructor(lbl.instructions, free_instr);
         free_vector(&lbl.instructions);
     }
 }
@@ -224,7 +237,7 @@ void parse_instruction(Parser *parser, Label *label) {
         if (tok.type == TOKEN_COMMA) {
             error_unexpected_comma(tok.span);
         }
-        vector_push_back(ops, copy_token(tok));
+        vector_push_back(ops, tok);
         // Because ops are separeted by commas
         if (i != amount_of_ops - 1) {
             Token comma = parser->tokens[parser->idx++];

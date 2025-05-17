@@ -52,27 +52,26 @@ int main(int argc, char *argv[]) {
     while (optind < argc)
         vector_push_back(input_files, argv[optind++]);
 
-    if (vector_size(input_files) > 1) {
-        printf("Compilation of multiple files is not supported yet!\n");
-        return 1;
-    }
-    INPUT_FILE_NAME = input_files[vector_size(input_files) - 1];
-
     Image image = new_image();
     vector_push_back_many(image.buffer, byte, 0, 0)
 
-    Parser parser = new_parser(INPUT_FILE_NAME);
-    if (SHOW_TOKENS) {
-        for (size_t i = 0; i < vector_size(parser.tokens); i++) {
-            print_token(parser.tokens[i]);
+    foreach(const char *, filename, input_files) {
+        INPUT_FILE_NAME = *filename;
+        Parser parser = new_parser(INPUT_FILE_NAME);
+        if (SHOW_TOKENS) {
+            printf("%s:\n", *filename);
+            for (size_t i = 0; i < vector_size(parser.tokens); i++) {
+                print_token(parser.tokens[i]);
+            }
         }
-    }
-    for (Label lbl = parse_label(&parser); lbl.name != NULL; lbl = parse_label(&parser)) {
-        if (lbl.is_empty) {
-            warning_empty_label(lbl);
-            continue;
+        for (Label lbl = parse_label(&parser); lbl.name != NULL; lbl = parse_label(&parser)) {
+            if (lbl.is_empty) {
+                warning_empty_label(lbl);
+                continue;
+            }
+            image_add_label(&image, lbl);
         }
-        image_add_label(&image, lbl);
+        free_parser(&parser);
     }
     analyse_program(image.labels);
     image_codegen(&image);
@@ -83,7 +82,6 @@ int main(int argc, char *argv[]) {
     image_check_unresolved_names(image);
     dump_image(image, OUTPUT_FILE_NAME);
 
-    free_parser(&parser);
     free_image(&image);
     free_vector(&input_files);
 

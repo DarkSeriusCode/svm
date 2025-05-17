@@ -1,11 +1,11 @@
-# SVM (Simple virtual machine)
+# SVM (Simple Virtual Machine)
 
 > [!WARNING]
-> This project is unfinished so many features may not work properly!
+> This project is unfinished, so many features may not work properly!
 
-SVM is a 16-bit virtual machine based on my own architecture. This project was created for my
-educational purposes. The goal of the project is to develop my own architecture and create the VM
-without any third-party dependencies. Currently, most features are not yet implemented.
+SVM is a 16-bit virtual machine. This project is developed only for the recreational purposes and is
+not supposed to be used in serious real-world applications. The goal of the project is to develop an 
+assembler and the VM from scratch. Do not treat this repo as something serious.
 
 ## Building
 All you need is `make` and a C compiler.
@@ -21,19 +21,20 @@ make
 `svm` is the virtual machine itself.
 
 ## Example
-Let's run this program (named `main.asm`):
+Let's write a simple "Hello World" program. (main.asm)
 ```asm
 _main:
-    movi r0, 34
-    movi r1, 35
-    add r0, r1
+    out 1, message, 12
+ret
+
+message:
+    .ascii "Hello World"
+    .byte 10
 ```
 
 ```bash
 sasm -o main main.asm
-svm main
+svm main -d ./build/dev/console.so:1
 ```
-Because the project is unfinished, the execution result will be saved in `vm.dump`
-`r0: 0x0045` means that register `r0` contains 0x0045 (69 in decimal).
-
-For more information about the assembler see `docs/assembler.md`
+Here we compile the program and run it on th VM with the device `./build/dev/console.so` connected to port 1.
+You can find additional examples in `examples` folder to learn how to use this repo

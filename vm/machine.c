@@ -96,7 +96,7 @@ void vm_load_device(VM *vm, const char *device_file, int port_id) {
     byte id = port_id;
     if (port_id == -1) {
         id = vm_get_free_port_id(*vm);
-        printf("Device %s attached to port %d\n", device_file, port_id);
+        printf("Device %s attached to port %d\n", device_file, id);
     }
     if (id == 0) {
         error_using_preserve_device();

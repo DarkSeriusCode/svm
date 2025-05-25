@@ -8,13 +8,13 @@ not supposed to be used in serious real-world applications. The goal of the proj
 assembler and the VM from scratch. Do not treat this repo as something serious.
 
 ## Building
-All you need is `make` and a C compiler.
 ```bash
 git clone https://github.com/DarkSeriusCode/svm
 cd svm
-make
-./build/sasm --help
-./build/svm --help
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+./build/sasm -h
+./build/svm -h
 ```
 
 `sasm` is an assembler for SVM.

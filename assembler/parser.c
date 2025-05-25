@@ -63,7 +63,7 @@ void instr_check_ops(Instr instr) {
     if (string_in_args(instr_name, 9, "add", "sub", "mul", "div", "and", "or", "xor", "shl", "shr"))
     {
         check_single_op(ops[0], 1, TOKEN_REG);
-        check_single_op(ops[1], 2, TOKEN_REG, TOKEN_NUMBER, TOKEN_IDENT);
+        check_single_op(ops[1], 3, TOKEN_REG, TOKEN_NUMBER, TOKEN_IDENT);
     }
     if (string_in_args(instr_name, 3, "not", "push", "pop")) {
         check_single_op(ops[0], 1, TOKEN_REG);

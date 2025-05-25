@@ -16,7 +16,7 @@ DEV_DIR = dev
 
 all: assembler vm dev
 
-$(shell mkdir -p build build/obj build/obj/sasm build/obj/svm build/obj/common build/dev)
+$(shell mkdir -p build build/obj build/obj/sasm build/obj/svm build/obj/common)
 
 HEADERS=
 
@@ -61,9 +61,9 @@ vm: build/svm
 
 # -------------------------------------------------------------------------------------------------
 
-DEVS = $(patsubst $(DEV_DIR)/%.c, build/dev/%.so, $(wildcard $(DEV_DIR)/*.c))
+DEVS = $(patsubst $(DEV_DIR)/%.c, build/%.so, $(wildcard $(DEV_DIR)/*.c))
 
-build/dev/%.so: $(DEV_DIR)/%.c
+build/%.so: $(DEV_DIR)/%.c $(HEADERS)
 	$(CC) $(DEV_FLAGS) $(CC_FLAGS) $< -o $@
 
 .PHONY: dev

@@ -71,13 +71,9 @@ void check_code_label(Label label) {
     }
 }
 
-void analyse_program(vector(Label) labels) {
-    // Analyse data labels
-    foreach(Label, label, labels) {
-        if (labels->is_empty) continue;
-        else if (label->is_data) check_data_label(*label);
-        else if (label->is_data && strcmp(label->name, ENTRY_POINT_NAME) == 0)
-            error_entry_point_with_decls();
-        else check_code_label(*label);
-    }
+void analyse_label(Label label) {
+    if (label.is_data) check_data_label(label);
+    else if (label.is_data && strcmp(label.name, ENTRY_POINT_NAME) == 0)
+        error_entry_point_with_decls();
+    else check_code_label(label);
 }

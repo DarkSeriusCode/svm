@@ -160,6 +160,16 @@ typedef struct {
         vector_push_back_many(vec, type, __VA_ARGS__); \
     } while(0);
 
+#define vector_extend(vec, other_vec) \
+    do { \
+        if ((vec) == NULL || (other_vec) == NULL) { \
+            break; \
+        } \
+        vector_grow(vec, vector_size(vec) + vector_size(other_vec)); \
+        memmove(vec + vector_size(vec), other_vec, vector_size(other_vec) * vector_item_size(other_vec)); \
+        __vector_set_size(vec, vector_size(vec) + vector_size(other_vec)); \
+    } while(0);
+
 void free_vector(void *vector);
 
 #ifdef VECTOR_IMPLEMENTATION

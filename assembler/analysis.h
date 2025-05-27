@@ -12,6 +12,6 @@ void check_names_existence(Instr instr, vector(Label) labels);
 void check_data_label(Label label);
 void check_code_label(Label label);
 
-void analyse_program(vector(Label) labels);
+void analyse_label(Label label);
 
 #endif

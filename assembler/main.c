@@ -69,11 +69,11 @@ int main(int argc, char *argv[]) {
                 warning_empty_label(lbl);
                 continue;
             }
+            analyse_label(lbl);
             image_add_label(&image, lbl);
         }
         free_parser(&parser);
     }
-    analyse_program(image.labels);
     image_codegen(&image);
 
     if (SHOW_IMAGE) {

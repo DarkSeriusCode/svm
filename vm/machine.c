@@ -269,12 +269,26 @@ int exec_instr(VM *vm) {
             }
         }; break;
 
+        // TODO: Extract code that gets args into a separete function/macro
         // out
         case 0b10101: {
-            skip_alignment(&buffer, &read_bits_count, 3);
             byte port_id = read_byte(&buffer, &read_bits_count);
-            word addr = read_number(&buffer, &read_bits_count);
-            word size = read_number(&buffer, &read_bits_count);
+            bool is_first_num = read_flag(&buffer, &read_bits_count);
+            bool is_second_num = read_flag(&buffer, &read_bits_count);
+            word addr;
+            if (is_first_num) {
+                skip_alignment(&buffer, &read_bits_count, 1);
+                addr = read_number(&buffer, &read_bits_count);
+            } else {
+                addr = vm->general_registers[read_register(&buffer, &read_bits_count)];
+            }
+            word size;
+            if (is_second_num) {
+                skip_alignment(&buffer, &read_bits_count, 1);
+                size = read_number(&buffer, &read_bits_count);
+            } else {
+                size = vm->general_registers[read_register(&buffer, &read_bits_count)];
+            }
             Port *port = vm_get_port(*vm, port_id);
             if (!port)
                 error_no_device_attached(port_id);
@@ -284,10 +298,23 @@ int exec_instr(VM *vm) {
 
         // in
         case 0b10110: {
-            skip_alignment(&buffer, &read_bits_count, 3);
             byte port_id = read_byte(&buffer, &read_bits_count);
-            word addr = read_number(&buffer, &read_bits_count);
-            word size = read_number(&buffer, &read_bits_count);
+            bool is_first_num = read_flag(&buffer, &read_bits_count);
+            bool is_second_num = read_flag(&buffer, &read_bits_count);
+            word addr;
+            if (is_first_num) {
+                skip_alignment(&buffer, &read_bits_count, 1);
+                addr = read_number(&buffer, &read_bits_count);
+            } else {
+                addr = vm->general_registers[read_register(&buffer, &read_bits_count)];
+            }
+            word size;
+            if (is_second_num) {
+                skip_alignment(&buffer, &read_bits_count, 1);
+                size = read_number(&buffer, &read_bits_count);
+            } else {
+                size = vm->general_registers[read_register(&buffer, &read_bits_count)];
+            }
             Port *port = vm_get_port(*vm, port_id);
             if (!port)
                 error_no_device_attached(port_id);

@@ -256,14 +256,25 @@ void image_codegen_code(Image *image, Instr instr) {
         append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[1]);
     }
     if (string_in_args(instr.name, 2, "in", "out")) {
-        append_alignment(&instr_bin_repr, &instr_bit_size, 3);
         append_byte(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
-        if (instr.ops[1].type == TOKEN_IDENT) {
-            append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[1]);
-        } else {
-            append_number(&instr_bin_repr, &instr_bit_size, instr.ops[1]);
+
+        if (instr.ops[1].type == TOKEN_REG) append_bit(&instr_bin_repr, &instr_bit_size, 0);
+        else append_bit(&instr_bin_repr, &instr_bit_size, 1);
+        if (instr.ops[2].type == TOKEN_REG) append_bit(&instr_bin_repr, &instr_bit_size, 0);
+        else append_bit(&instr_bin_repr, &instr_bit_size, 1);
+
+        for (size_t i = 1; i <= 2; i++) {
+            Token op = instr.ops[i];
+            if (op.type == TOKEN_IDENT) {
+                append_alignment(&instr_bin_repr, &instr_bit_size, 1);
+                append_ident(&instr_bin_repr, &instr_bit_size, image, op);
+            } else if (op.type == TOKEN_NUMBER) {
+                append_alignment(&instr_bin_repr, &instr_bit_size, 1);
+                append_number(&instr_bin_repr, &instr_bit_size, op);
+            } else {
+                append_register(&instr_bin_repr, &instr_bit_size, op);
+            }
         }
-        append_number(&instr_bin_repr, &instr_bit_size, instr.ops[2]);
     }
 
     size_t instr_byte_size = instr_bit_size / 8;

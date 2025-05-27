@@ -77,8 +77,8 @@ void instr_check_ops(Instr instr) {
     }
     if (string_in_args(instr_name, 2, "out", "in")) {
         check_single_op(ops[0], 1, TOKEN_NUMBER);
-        check_single_op(ops[1], 2, TOKEN_NUMBER, TOKEN_IDENT);
-        check_single_op(ops[2], 1, TOKEN_NUMBER);
+        check_single_op(ops[1], 3, TOKEN_NUMBER, TOKEN_IDENT, TOKEN_REG);
+        check_single_op(ops[2], 3, TOKEN_NUMBER, TOKEN_IDENT, TOKEN_REG);
     }
     // ret instruction doesn't need a check (it has no params ;-;)
 }

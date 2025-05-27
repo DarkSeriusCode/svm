@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(svm LANGUAGES C)
 
-set(CMAKE_C_COMPILER "clang")
+set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_C_FLAGS "-Wall -Wextra")
 set(COMPILE_CMDS_PATH "${PROJECT_SOURCE_DIR}/compile_commands.json")
 

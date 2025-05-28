@@ -46,6 +46,7 @@ void free_label(void *label);
 typedef struct {
     const char *filename; // needed for errors
     vector(Token) tokens;
+    const char *last_proper_label_name;
     size_t idx;
 } Parser;
 
@@ -59,5 +60,7 @@ void parse_declaration(Parser *parser, Label *label);
 void parse_instruction(Parser *parser, Label *label);
 
 void free_parser(void *parser);
+
+char *mangle_name(const char *lbl_name, const char *other_name);
 
 #endif

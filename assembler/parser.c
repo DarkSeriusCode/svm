@@ -131,6 +131,7 @@ Parser new_parser(const char *filename) {
         .tokens = tokens,
         .idx = 0,
         .filename = filename,
+        .last_proper_label_name = NULL,
     };
 }
 
@@ -178,7 +179,16 @@ Label parse_label(Parser *parser) {
         return label;
     }
     Token lbl_tok = parser_get_checked_token(*parser, parser->idx++, TOKEN_LABEL);
-    label_set_name(&label, lbl_tok.value);
+    const char *label_name = lbl_tok.value;
+    char *new_name = NULL;
+    if (parser->last_proper_label_name && lbl_tok.value[0] == '.') {
+        new_name = mangle_name(parser->last_proper_label_name, lbl_tok.value);
+        label_name = new_name;
+    }
+    label_set_name(&label, label_name);
+    if (new_name) free((void *)new_name);
+    if (lbl_tok.value[0] != '.') parser->last_proper_label_name = lbl_tok.value;
+
     label.span = lbl_tok.span;
     if (parser->tokens[parser->idx].type == TOKEN_LABEL) {
         return label;
@@ -237,6 +247,10 @@ void parse_instruction(Parser *parser, Label *label) {
         if (tok.type == TOKEN_COMMA) {
             error_unexpected_comma(tok.span);
         }
+        if (tok.value[0] == '.') {
+            char *new_name = mangle_name(parser->last_proper_label_name, tok.value);
+            tok.value = new_name;
+        }
         vector_push_back(ops, tok);
         // Because ops are separeted by commas
         if (i != amount_of_ops - 1) {
@@ -259,4 +273,10 @@ void parse_instruction(Parser *parser, Label *label) {
 void free_parser(void *parser) {
     Parser p = *(Parser *)parser;
     free_vector(&p.tokens);
+}
+
+char *mangle_name(const char *lbl_name, const char *other_name) {
+    char *new_name = malloc(strlen(lbl_name) + strlen(other_name));
+    sprintf(new_name, "%s%s", lbl_name, other_name);
+    return new_name;
 }

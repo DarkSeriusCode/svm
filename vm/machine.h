@@ -15,11 +15,12 @@ word read_word_as_big_endian(byte *memory);
 
 // ------------------------------------------------------------------------------------------------
 
+#define REG_SP 13
+#define REG_IP 14
+#define REG_CF 15
+
 typedef struct {
-    word general_registers[13];
-    word ip;
-    word sp;
-    word cf;
+    word registers[16];
     byte *memory;
     size_t program_size;
     size_t stack_size;

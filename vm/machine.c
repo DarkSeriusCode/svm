@@ -47,9 +47,9 @@ static word read_bits(unsigned long *buffer, size_t *read_bits_count, size_t siz
             skip_alignment(buffer, read_bits_count, 6); \
             value = read_number(buffer, read_bits_count); \
         } else { \
-            value = vm->general_registers[read_register(buffer, read_bits_count)]; \
+            value = vm->registers[read_register(buffer, read_bits_count)]; \
         } \
-        vm->general_registers[src_reg] op value; \
+        vm->registers[src_reg] op value; \
     } while(0);
 
 // ------------------------------------------------------------------------------------------------
@@ -75,12 +75,12 @@ VM new_vm(const char *program_file) {
         .program_size = program_size,
         .stack_begging = program_size + STACK_OFFSET + STACK_SIZE,
         .memory = memory,
-        .cf = 0,
-        .sp = program_size + STACK_OFFSET + STACK_SIZE,
-        .ip = read_word_as_big_endian(memory),
         .ports = ports,
     };
-    memset(vm.general_registers, 0, sizeof(vm.general_registers));
+    memset(vm.registers, 0, sizeof(vm.registers));
+    vm.registers[REG_CF] = 0;
+    vm.registers[REG_SP] = program_size + STACK_OFFSET + STACK_SIZE;
+    vm.registers[REG_IP] = read_word_as_big_endian(memory);
     push_in_stack(&vm, program_size);
 
     return vm;
@@ -133,10 +133,10 @@ byte vm_get_free_port_id(VM vm) {
 }
 
 int exec_instr(VM *vm) {
-    if (vm->ip >= vm->program_size) {
+    if (vm->registers[REG_IP] >= vm->program_size) {
         return 0;
     }
-    byte *mem = vm->memory + vm->ip;
+    byte *mem = vm->memory + vm->registers[REG_IP];
     unsigned long buffer = read_ulong_as_big_endian(mem);
     size_t read_bits_count = 0;
     byte opcode = read_bits(&buffer, &read_bits_count, OPCODE_BIT_SIZE);
@@ -150,9 +150,9 @@ int exec_instr(VM *vm) {
                 skip_alignment(&buffer, &read_bits_count, 6);
                 value = read_number(&buffer, &read_bits_count);
             } else {
-                value = vm->general_registers[read_register(&buffer, &read_bits_count)];
+                value = vm->registers[read_register(&buffer, &read_bits_count)];
             }
-            vm->general_registers[dest_reg] = value;
+            vm->registers[dest_reg] = value;
         }; break;
 
         // load
@@ -164,9 +164,9 @@ int exec_instr(VM *vm) {
                 skip_alignment(&buffer, &read_bits_count, 6);
                 addr = read_number(&buffer, &read_bits_count);
             } else {
-                addr = vm->general_registers[read_register(&buffer, &read_bits_count)];
+                addr = vm->registers[read_register(&buffer, &read_bits_count)];
             }
-            vm->general_registers[dest_reg] = read_word_as_big_endian(vm->memory + addr);
+            vm->registers[dest_reg] = read_word_as_big_endian(vm->memory + addr);
         }; break;
 
         // store
@@ -178,9 +178,9 @@ int exec_instr(VM *vm) {
                 skip_alignment(&buffer, &read_bits_count, 6);
                 addr = read_number(&buffer, &read_bits_count);
             } else {
-                addr = vm->general_registers[read_register(&buffer, &read_bits_count)];
+                addr = vm->registers[read_register(&buffer, &read_bits_count)];
             }
-            word value = vm->general_registers[src_reg];
+            word value = vm->registers[src_reg];
             vm->memory[addr++] = value >> 8;
             vm->memory[addr] = value & 0xff;
         }; break;
@@ -199,35 +199,35 @@ int exec_instr(VM *vm) {
         // not
         case 0b01000: {
             word reg = read_register(&buffer, &read_bits_count);
-            vm->general_registers[reg] = ~vm->general_registers[reg];
+            vm->registers[reg] = ~vm->registers[reg];
         }; break;
 
         // push
         case 0b01001: {
             word reg = read_register(&buffer, &read_bits_count);
-            push_in_stack(vm, vm->general_registers[reg]);
+            push_in_stack(vm, vm->registers[reg]);
         }; break;
 
         // pop
         case 0b01010: {
             word reg = read_register(&buffer, &read_bits_count);
             word value = pop_from_stack(vm);
-            vm->general_registers[reg] = value;
+            vm->registers[reg] = value;
         }; break;
 
         // call
         case 0b01011: {
             skip_alignment(&buffer, &read_bits_count, 3);
             word func_addr = read_number(&buffer, &read_bits_count);
-            word ret_addr = vm->ip + 3;
+            word ret_addr = vm->registers[REG_IP] + 3;
             push_in_stack(vm, ret_addr);
-            vm->ip = func_addr;
+            vm->registers[REG_IP] = func_addr;
             return 1;
         }; break;
 
         // ret
         case 0b01100: {
-            vm->ip = pop_from_stack(vm);
+            vm->registers[REG_IP] = pop_from_stack(vm);
             return 1;
         }; break;
 
@@ -235,36 +235,36 @@ int exec_instr(VM *vm) {
         case 0b10010: {
             skip_alignment(&buffer, &read_bits_count, 3);
             word addr = read_number(&buffer, &read_bits_count);
-            vm->ip = addr;
+            vm->registers[REG_IP] = addr;
             return 1;
         }; break;
 
         // cmp
         case 0b10011: {
-            word a = vm->general_registers[read_register(&buffer, &read_bits_count)];
+            word a = vm->registers[read_register(&buffer, &read_bits_count)];
             word flag = read_flag(&buffer, &read_bits_count);
             short b;
             if (flag) {
                 skip_alignment(&buffer, &read_bits_count, 6);
                 b = read_number(&buffer, &read_bits_count);
             } else {
-                b = vm->general_registers[read_register(&buffer, &read_bits_count)];
+                b = vm->registers[read_register(&buffer, &read_bits_count)];
             }
-            vm->cf = 0;
-            if (a == b)      { vm->cf = CMP_EQ; }
-            else if (a <= b) { vm->cf = CMP_LT; }
-            else if (a >= b) { vm->cf = CMP_GT; }
-            else if (a < b)  { vm->cf = CMP_LQ; }
-            else if (a > b)  { vm->cf = CMP_GQ; }
-            else if (a != b) { vm->cf = CMP_NQ; }
+            vm->registers[REG_CF] = 0;
+            if (a == b)      { vm->registers[REG_CF] = CMP_EQ; }
+            else if (a <= b) { vm->registers[REG_CF] = CMP_LT; }
+            else if (a >= b) { vm->registers[REG_CF] = CMP_GT; }
+            else if (a < b)  { vm->registers[REG_CF] = CMP_LQ; }
+            else if (a > b)  { vm->registers[REG_CF] = CMP_GQ; }
+            else if (a != b) { vm->registers[REG_CF] = CMP_NQ; }
         }; break;
 
         // jif
         case 0b10100: {
             word cmp = read_bits(&buffer, &read_bits_count, 3);
             word addr = read_number(&buffer, &read_bits_count);
-            if ((cmp == CMP_NQ && vm->cf != CMP_EQ) || cmp == vm->cf) {
-                vm->ip = addr;
+            if ((cmp == CMP_NQ && vm->registers[REG_CF] != CMP_EQ) || cmp == vm->registers[REG_CF]) {
+                vm->registers[REG_IP] = addr;
                 return 1;
             }
         }; break;
@@ -280,20 +280,20 @@ int exec_instr(VM *vm) {
                 skip_alignment(&buffer, &read_bits_count, 1);
                 addr = read_number(&buffer, &read_bits_count);
             } else {
-                addr = vm->general_registers[read_register(&buffer, &read_bits_count)];
+                addr = vm->registers[read_register(&buffer, &read_bits_count)];
             }
             word size;
             if (is_second_num) {
                 skip_alignment(&buffer, &read_bits_count, 1);
                 size = read_number(&buffer, &read_bits_count);
             } else {
-                size = vm->general_registers[read_register(&buffer, &read_bits_count)];
+                size = vm->registers[read_register(&buffer, &read_bits_count)];
             }
             Port *port = vm_get_port(*vm, port_id);
             if (!port)
                 error_no_device_attached(port_id);
             word code = port->device.write(addr, size);
-            vm->general_registers[0] = code;
+            vm->registers[0] = code;
         }; break;
 
         // in
@@ -306,20 +306,20 @@ int exec_instr(VM *vm) {
                 skip_alignment(&buffer, &read_bits_count, 1);
                 addr = read_number(&buffer, &read_bits_count);
             } else {
-                addr = vm->general_registers[read_register(&buffer, &read_bits_count)];
+                addr = vm->registers[read_register(&buffer, &read_bits_count)];
             }
             word size;
             if (is_second_num) {
                 skip_alignment(&buffer, &read_bits_count, 1);
                 size = read_number(&buffer, &read_bits_count);
             } else {
-                size = vm->general_registers[read_register(&buffer, &read_bits_count)];
+                size = vm->registers[read_register(&buffer, &read_bits_count)];
             }
             Port *port = vm_get_port(*vm, port_id);
             if (!port)
                 error_no_device_attached(port_id);
             word code = port->device.read(addr, size);
-            vm->general_registers[0] = code;
+            vm->registers[0] = code;
         }; break;
 
         default:
@@ -331,27 +331,27 @@ int exec_instr(VM *vm) {
     if (read_bits_count / 8.0 > (int)(read_bits_count / 8.0)) {
         read_bytes_count += 1;
     }
-    vm->ip += read_bytes_count;
+    vm->registers[REG_IP] += read_bytes_count;
     return 1;
 }
 
 void push_in_stack(VM *vm, word value) {
-    if (vm->stack_begging - vm->sp >= STACK_SIZE) {
+    if (vm->stack_begging - vm->registers[REG_SP] >= STACK_SIZE) {
         fprintf(stderr, "Stack overflow (vm dumped)\n");
         dump_vm(*vm, "stackowerflow.dump");
         exit(1);
     }
-    vm->memory[vm->sp--] = value >> 8;
-    vm->memory[vm->sp--] = value & 0xff;
+    vm->memory[vm->registers[REG_SP]--] = value >> 8;
+    vm->memory[vm->registers[REG_SP]--] = value & 0xff;
 }
 
 word pop_from_stack(VM *vm) {
-    if (vm->sp >= vm->stack_begging) {
+    if (vm->registers[REG_SP] >= vm->stack_begging) {
         fprintf(stderr, "Stack is empty (vm dumped)\n");
         dump_vm(*vm, "stackisempty.dump");
         exit(1);
     }
-    word value = vm->memory[++vm->sp];
-    value |= vm->memory[++vm->sp];
+    word value = vm->memory[++vm->registers[REG_SP]];
+    value |= vm->memory[++vm->registers[REG_SP]];
     return value;
 }

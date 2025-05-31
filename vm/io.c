@@ -66,21 +66,21 @@ void dump_vm(VM vm, const char *filename) {
 
     fprintf(fp, "\nRegisters:\n");
     for (size_t i = 0; i < 4; i++) {
-        fprintf(fp, "r%lu: 0x%04x    ", i, vm.general_registers[i]);
-        fprintf(fp, "r%lu: 0x%04x    ", i + 4, vm.general_registers[i + 4]);
+        fprintf(fp, "r%lu: 0x%04x    ", i, vm.registers[i]);
+        fprintf(fp, "r%lu: 0x%04x    ", i + 4, vm.registers[i + 4]);
         if (i + 8 <= 12) {
-            fprintf(fp, "r%lu: 0x%04x", i + 8, vm.general_registers[i + 8]);
+            fprintf(fp, "r%lu: 0x%04x", i + 8, vm.registers[i + 8]);
         }
         // Only for 13th
         if (i == 0) {
-            fprintf(fp, "    r%d: 0x%04x", 12, vm.general_registers[12]);
+            fprintf(fp, "    r%d: 0x%04x", 12, vm.registers[12]);
         }
         fprintf(fp, "\n");
     }
     fprintf(fp, "--------\n");
-    fprintf(fp, "ip: 0x%04x\n", vm.ip);
-    fprintf(fp, "cf: 0x%04x\n", vm.cf);
-    fprintf(fp, "sp: 0x%04x\n", vm.sp);
+    fprintf(fp, "ip: 0x%04x\n", vm.registers[REG_IP]);
+    fprintf(fp, "cf: 0x%04x\n", vm.registers[REG_CF]);
+    fprintf(fp, "sp: 0x%04x\n", vm.registers[REG_SP]);
 
     fprintf(fp, "\nMemory");
     if (vm.program_size == 0) {
@@ -97,7 +97,7 @@ void dump_vm(VM vm, const char *filename) {
 
     fprintf(fp, "\n\nStack:\n");
     size_t counter = 0;
-    for (byte *b = vm.memory + vm.stack_begging; b > vm.memory + vm.sp; b--, counter++) {
+    for (byte *b = vm.memory + vm.stack_begging; b > vm.memory + vm.registers[REG_SP]; b--, counter++) {
         if (counter != 0 && counter % 16 == 0) {
             fprintf(fp, "\n");
         }

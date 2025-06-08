@@ -1,7 +1,10 @@
+#define STR_IMPLEMENTATION
+
 #include "machine.h"
 #include "common/io.h"
 #include "common/arch.h"
 #include "io.h"
+#include "common/str.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -83,6 +86,8 @@ VM new_vm(const char *program_file) {
     vm.registers[REG_IP] = read_word_as_big_endian(memory);
     push_in_stack(&vm, program_size);
 
+    vm_perform_directives(&vm);
+
     return vm;
 }
 
@@ -130,6 +135,22 @@ byte vm_get_free_port_id(VM vm) {
     }
     error_no_free_ports();
     return 0; // UNREACHABLE
+}
+
+void vm_perform_directives(VM *vm) {
+    byte *mem_ptr = vm->memory + 2;
+    byte dir_code = *mem_ptr++;
+    switch (dir_code) {
+        case 0b001: {
+            string path = NULL;
+            for (char *c = (char *)mem_ptr; *c != 0; c = (char *)(++mem_ptr)) {
+                string_push_char(&path, *c);
+            }
+            byte port = *(++mem_ptr);
+            vm_load_device(vm, path, port);
+            free_string(&path);
+        }; break;
+    }
 }
 
 int exec_instr(VM *vm) {

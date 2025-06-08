@@ -20,6 +20,7 @@ const char *token_type_to_str(TokenType type) {
         case TOKEN_DECL:        return "declaration";
         case TOKEN_STRING:      return "string";
         case TOKEN_CMP:         return "cmp";
+        case TOKEN_DIRECTIVE:   return "directive";
         case TOKEN_EOF:         return "<EOF>";
         default:                return "[undefined]";
     }
@@ -225,7 +226,7 @@ void error_missed_label(TokenType instead_of_label, Span pos) {
 }
 
 void error_invalid_operand_in_vec(TokenType invalid_op, Span pos, vector(TokenType) valid_types) {
-    print_error(pos, "Invalid instruction operand!", NULL);
+    print_error(pos, "Invalid operand!", NULL);
     printf("  Expected");
     for (size_t i = 0; i < vector_size(valid_types); i++) {
         style(STYLE_BOLD);
@@ -296,6 +297,11 @@ void error_no_entry(void) {
     printf_red("error: ");
     printf("There's no "ENTRY_POINT_NAME" label! Try to write:\n");
     printf_green(ENTRY_POINT_NAME":\n\t;; your code goes here\nret\n");
+    exit(EXIT_FAILURE);
+}
+
+void error_unknown_directive(Token directive) {
+    print_error(directive.span, "Unknown directive `%s`!", directive.value);
     exit(EXIT_FAILURE);
 }
 

@@ -1,5 +1,5 @@
-#ifndef __COMMON_VECTOR_H
-#define __COMMON_VECTOR_H
+#ifndef __VECTOR_H
+#define __VECTOR_H
 
 #include <stddef.h>
 #include <string.h>
@@ -160,12 +160,13 @@ typedef struct {
         vector_push_back_many(vec, type, __VA_ARGS__); \
     } while(0);
 
+// TODO: Make it work
 #define vector_extend(vec, other_vec) \
     do { \
         if ((vec) == NULL || (other_vec) == NULL) { \
             break; \
         } \
-        vector_grow(vec, vector_size(vec) + vector_size(other_vec)); \
+        vector_reserve(vec, vector_size(vec) + vector_size(other_vec)); \
         memmove(vec + vector_size(vec), other_vec, vector_size(other_vec) * vector_item_size(other_vec)); \
         __vector_set_size(vec, vector_size(vec) + vector_size(other_vec)); \
     } while(0);

@@ -35,8 +35,11 @@ bool in_one_op_instruction_set(const char *inst);
 bool in_two_ops_instruction_set(const char *inst);
 bool in_three_ops_instruction_set(const char *inst);
 bool in_register_set(const char *inst);
+bool in_directive_set(const char *name);
 
 byte get_instr_opcode(const char *instr_name);
 byte get_register_code(const char *reg_name);
+byte get_dir_param_count(const char *dir_name);
+byte get_dir_code(const char *dir_name);
 
 #endif

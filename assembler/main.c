@@ -1,4 +1,5 @@
 #define VECTOR_IMPLEMENTATION
+#define STR_IMPLEMENTATION
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -11,6 +12,7 @@
 #include "image.h"
 #include "parser.h"
 #include "analysis.h"
+#include "common/utils.h"
 
 const char *INPUT_FILE_NAME;
 char *OUTPUT_FILE_NAME = "a.out";
@@ -19,6 +21,7 @@ bool SHOW_IMAGE = false;
 bool ENABLE_COLORS = true;
 
 void print_help(const char *name);
+void parse_top_level(Image *image, Parser *parser);
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -64,14 +67,7 @@ int main(int argc, char *argv[]) {
                 print_token(parser.tokens[i]);
             }
         }
-        for (Label lbl = parse_label(&parser); lbl.name != NULL; lbl = parse_label(&parser)) {
-            if (lbl.is_empty) {
-                warning_empty_label(lbl);
-                continue;
-            }
-            analyse_label(lbl);
-            image_add_label(&image, lbl);
-        }
+        parse_top_level(&image, &parser);
         free_parser(&parser);
     }
     image_codegen(&image);
@@ -86,6 +82,28 @@ int main(int argc, char *argv[]) {
     free_vector(&input_files);
 
     return 0;
+}
+
+void parse_top_level(Image *image, Parser *parser) {
+    while (parser->tokens[parser->idx].type != TOKEN_EOF) {
+        Token tok = parser->tokens[parser->idx];
+        switch (tok.type) {
+            case TOKEN_DIRECTIVE:
+                image_add_directive(image, parse_directive(parser));
+                break;
+            case TOKEN_LABEL: {
+                Label lbl = parse_label(parser);
+                if (lbl.is_empty) {
+                    warning_empty_label(lbl);
+                    continue;
+                }
+                analyse_label(lbl);
+                image_add_label(image, lbl);
+            }; break;
+            default:
+                UNREACHABLE("If you see this, something actually went wrong, create an issue");
+        }
+    }
 }
 
 void print_help(const char *name) {

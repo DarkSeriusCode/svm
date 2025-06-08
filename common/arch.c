@@ -9,6 +9,7 @@ const char *ONE_OP_INSTRUCTIONS[] = { "push", "pop", "call", "not", "jmp" };
 const char *TWO_OPS_INSTRUCTIONS[] = { "load", "store", "mov", "add", "sub", "mul", "div",
                                        "and", "or", "xor", "shl", "shr", "cmp", "jif" };
 const char *THREE_OPS_INSTRUCTIONS[] = { "out", "in" };
+const char *DIRECTIVES[] = { "use" };
 const char *REGISTER_SET[] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10",
                                "r11", "r12",  "sp", "ip", "cf" };
 
@@ -57,6 +58,13 @@ bool in_register_set(const char *inst) {
     return false;
 }
 
+// TODO: Get rid of copy-pasted code in here ;-;
+bool in_directive_set(const char *name) {
+    for (size_t i = 0; i < sizeof(DIRECTIVES)/sizeof(DIRECTIVES[0]); i++)
+        if (strcmp(DIRECTIVES[i], name) == 0) return true;
+    return false;
+}
+
 byte get_instr_opcode(const char *instr_name) {
     byte opcode = 0;
     if (strcmp(instr_name, "mov") == 0) opcode = 0b00001;
@@ -102,5 +110,16 @@ byte get_register_code(const char *reg_name) {
     if (strcmp(reg_name, "sp") == 0) return 0b1101;
     if (strcmp(reg_name, "ip") == 0) return 0b1110;
     if (strcmp(reg_name, "cf") == 0) return 0b1111;
+    return -1;
+}
+
+byte get_dir_param_count(const char *dir_name) {
+    if (strcmp(dir_name, "use") == 0) return 2;
+    return 0;
+}
+
+byte get_dir_code(const char *dir_name) {
+    assert(in_directive_set(dir_name));
+    if (strcmp(dir_name, "use") == 0) return 0b001;
     return -1;
 }

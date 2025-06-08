@@ -1,6 +1,7 @@
 #ifndef __ASM_PARSER_H
 #define __ASM_PARSER_H
 
+#include <stdbool.h>
 #include "common/vector.h"
 #include "lexer.h"
 
@@ -26,8 +27,20 @@ void check_single_op(Token op, size_t expected_types_count, ...);
 
 typedef struct {
     const char *name;
+    bool is_empty;
+    vector(Token) params;
+} Directive;
+
+Directive empty_directive(void);
+void directive_set_name(Directive *directive, const char *name);
+void directive_check_params(Directive directive);
+void free_directive(void *directive);
+
+typedef struct {
+    const char *name;
     bool is_data;
     bool is_empty;
+    size_t data_size; // Only if is_data is true
     Span span;
     union {
         vector(Instr) instructions;
@@ -55,6 +68,7 @@ Parser new_parser(const char *filename);
 Token parser_get_checked_token(Parser parser, size_t pos, TokenType tok_type);
 Token parser_get_checked_token_in_list(Parser parser, size_t pos, size_t types_count, ...);
 
+Directive parse_directive(Parser *parser);
 Label parse_label(Parser *parser);
 void parse_declaration(Parser *parser, Label *label);
 void parse_instruction(Parser *parser, Label *label);

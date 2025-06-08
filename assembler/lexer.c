@@ -62,14 +62,14 @@ bool is_cmp(const char *buffer) {
 
 const char *is_incorrect(const char *buffer) {
     for (const char *c = buffer; *c != '\0'; c++)
-        if (*c != '-' && *c != '.' && *c != '_' && !isalnum(*c)) return c;
+        if (*c != '#' && *c != '-' && *c != '.' && *c != '_' && !isalnum(*c)) return c;
     return NULL;
 }
 
 // ------------------------------------------------------------------------------------------------
 
-static Span calc_span(Span span, const char *buffer) {
-    return (Span) { span.column - strlen(buffer), span.line, strlen(buffer) };
+static Span calc_span(Span span, size_t buff_size) {
+    return (Span) { span.column - buff_size, span.line, buff_size };
 }
 
 Lexer new_lexer(const char *file_name) {
@@ -86,10 +86,11 @@ Lexer new_lexer(const char *file_name) {
         .current_span = (Span){ 1, 1, 0 },
         .file_name = file_name,
         .token_buffer = token_buffer,
+        .buffer = NULL,
     };
 }
 
-void lexer_advice(Lexer *lexer) {
+void lexer_forward(Lexer *lexer) {
     if (lexer->i < strlen(lexer->source_file)) {
         lexer->c = lexer->source_file[lexer->i++];
     }
@@ -104,39 +105,42 @@ void lexer_advice(Lexer *lexer) {
 }
 
 Token lex_string(Lexer *lexer) {
-    size_t start_pos = lexer->i;
-    lexer_advice(lexer);
-    while (lexer->c != '"') lexer_advice(lexer);
-    size_t len = lexer->i - start_pos + 1;
+    vector(char) buff = NULL;
+    lexer_forward(lexer);
+    while (lexer->c != '"') {
+        vector_push_back(buff, lexer->c);
+        lexer_forward(lexer);
+    }
+    vector_push_back(buff, '\0');
+    Token str = new_token(TOKEN_STRING, buff, calc_span(lexer->current_span, strlen(buff) + 2));
+    free_vector(&buff);
+    return str;
+}
 
-    char string[len+1];
-    memset(string, 0, len);
-    strncpy(string, lexer->source_file + start_pos - 1, len);
-    string[len] = '\0';
-
-    return new_token(TOKEN_STRING, string, calc_span(lexer->current_span, string));
+Token lex_directive(Lexer *lexer) {
+    Token dir_ident = lexer_get_next_token(lexer);
+    Span span = calc_span(lexer->current_span, strlen(dir_ident.value) + 1);
+    span.column--;
+    Token dir = new_token(TOKEN_DIRECTIVE, dir_ident.value, span);
+    if (!in_directive_set(dir.value)) {
+        error_unknown_directive(dir);
+    }
+    return dir;
 }
 
 void lexer_skip_whitespaces(Lexer *lexer) {
     if (lexer->i >= strlen(lexer->source_file)) return;
-    while (isspace(lexer->c)) lexer_advice(lexer);
+    while (isspace(lexer->c)) lexer_forward(lexer);
 }
 
 void lexer_skip_comment(Lexer *lexer) {
     while (lexer->c == ';') {
-        while (lexer->c != 10) lexer_advice(lexer);
-        lexer_advice(lexer);
+        while (lexer->c != 10) lexer_forward(lexer);
+        lexer_forward(lexer);
     }
 }
 
 Token make_nonterm(const char *buffer, Span token_span) {
-    if (in_instruction_set(buffer))
-        return new_token(TOKEN_INSTR, buffer, token_span);
-    if (is_reg(buffer)) {
-        if (!in_register_set(buffer))
-            error_unknown_register(buffer, token_span);
-        return new_token(TOKEN_REG, buffer, token_span);
-    }
     if (is_ident(buffer))
         return new_token(TOKEN_IDENT, buffer, token_span);
     if (is_number(buffer))
@@ -144,26 +148,15 @@ Token make_nonterm(const char *buffer, Span token_span) {
     return new_token(TOKEN_UNKNOWN, buffer, token_span);
 }
 
-Token lexer_push_and_return_nonterm(Lexer *lexer, Token tok, const char *buffer, Span token_span) {
-    vector_push_back(lexer->token_buffer, tok);
-    if (strlen(buffer)) {
-        return make_nonterm(buffer, token_span);
-    }
-    return lexer_get_next_token(lexer);
-}
-
 Token lexer_get_next_token(Lexer *lexer) {
     Span tok_span;
-    char buffer[1024];
-    size_t i = 0;
+    string_clean(lexer->buffer);
     if (!vector_empty(lexer->token_buffer)) {
         Token tok = lexer->token_buffer[0];
         vector_erase(lexer->token_buffer, 0);
         return tok;
     }
-    memset(buffer, 0, sizeof(buffer));
-
-    lexer_advice(lexer);
+    lexer_forward(lexer);
     do {
         // if the entire line is a comment it will skip it.
         lexer_skip_comment(lexer);
@@ -176,40 +169,55 @@ Token lexer_get_next_token(Lexer *lexer) {
         switch (lexer->c) {
             case '"': return lex_string(lexer);
             case ';': lexer_skip_comment(lexer); continue;
-            case ',': return lexer_push_and_return_nonterm(lexer,
-                new_token(TOKEN_COMMA, ",", calc_span(lexer->current_span, " ")),
-                buffer, tok_span); break;
-            case ':': {
-                Span pos = calc_span(lexer->current_span, buffer);
-                pos.column--;
-                if (!is_ident(buffer)) {
-                    error_invalid_name(buffer, "label", pos);
+            case ',': {
+                Token comma = new_token(TOKEN_COMMA, ",", calc_span(lexer->current_span, 1));
+                if (strlen(lexer->buffer) > 0) {
+                    vector_push_back(lexer->token_buffer, comma);
+                } else {
+                    return comma;
                 }
-                return new_token(TOKEN_LABEL, buffer, pos);
             }; break;
+            case ':': {
+                Span pos = calc_span(lexer->current_span, strlen(lexer->buffer));
+                pos.column--;
+                if (!is_ident(lexer->buffer)) {
+                    error_invalid_name(lexer->buffer, "label", pos);
+                }
+                return new_token(TOKEN_LABEL, lexer->buffer, pos);
+            }; break;
+            case '#': return lex_directive(lexer);
+            default:
+                string_push_char(&lexer->buffer, tolower(lexer->c));
+                tok_span = calc_span(lexer->current_span, strlen(lexer->buffer));
         }
-        buffer[i++] = tolower(lexer->c);
-        tok_span = calc_span(lexer->current_span, buffer);
 
-        if (string_in_args(buffer, 4, ".byte", ".word", ".align", ".ascii"))
-            return new_token(TOKEN_DECL, buffer, tok_span);
-        if (is_cmp(buffer)) {
-            return new_token(TOKEN_CMP, buffer, tok_span);
+        // Terms
+        if (string_in_args(lexer->buffer, 5, ".byte", ".word", ".align", ".ascii", ".sizeof"))
+            return new_token(TOKEN_DECL, lexer->buffer, tok_span);
+        if (is_cmp(lexer->buffer)) {
+            return new_token(TOKEN_CMP, lexer->buffer, tok_span);
         }
-        const char *incorrect_at = is_incorrect(buffer);
+        if (in_instruction_set(lexer->buffer))
+            return new_token(TOKEN_INSTR, lexer->buffer, tok_span);
+        if (is_reg(lexer->buffer)) {
+            if (!in_register_set(lexer->buffer))
+                error_unknown_register(lexer->buffer, tok_span);
+            return new_token(TOKEN_REG, lexer->buffer, tok_span);
+        }
+        const char *incorrect_at = is_incorrect(lexer->buffer);
         if (incorrect_at != NULL) {
             tok_span.column += tok_span.len - 1;
             tok_span.len = 1;
             error_invalid_character(tok_span);
         }
-        lexer_advice(lexer);
+        lexer_forward(lexer);
     }
-    assert(strlen(buffer) != 0);
-    return make_nonterm(buffer, tok_span);
+    return make_nonterm(lexer->buffer, tok_span);
 }
 
 void free_lexer(void *lexer_ptr) {
     Lexer lexer = *(Lexer *)lexer_ptr;
     free((void *)lexer.source_file);
     free_vector(&lexer.token_buffer);
+    free_string(&lexer.buffer);
 }

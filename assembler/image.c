@@ -63,7 +63,16 @@ void image_add_label(Image *img, Label lbl) {
     }
 }
 
+void image_add_directive(Image *img, Directive dir) {
+    vector_push_back(img->diresctives, dir);
+}
+
 void image_codegen(Image *image) {
+    // Dump directives
+    foreach(Directive, dir, image->diresctives) {
+        image_codegen_directive(image, *dir);
+    }
+
     // Data labels
     foreach(Label, lbl, image->labels) {
         if (!lbl->is_data) continue;
@@ -128,6 +137,20 @@ void image_resolve_names(Image *image) {
     }
 }
 
+// TODO: Add analysis of dirs
+void image_codegen_directive(Image *image, Directive dir) {
+    byte dir_code = get_dir_code(dir.name);
+    vector_push_back(image->buffer, dir_code);
+    if (strcmp(dir.name, "use") == 0) {
+        for (size_t i = 0; i < strlen(dir.params[0].value) + 1; i++) {
+            vector_push_back(image->buffer, dir.params[0].value[i]);
+        }
+        char *unused;
+        long port = strtol(dir.params[1].value, &unused, 10);
+        vector_push_back(image->buffer, (byte)port);
+    }
+}
+
 Symbol *image_get_symbol(Image image, const char *name) {
     for (size_t i = 0; i < vector_size(image.sym_table); i++) {
         Symbol s = image.sym_table[i];
@@ -154,8 +177,21 @@ void image_codegen_data(Image *image, Decl decl) {
         vector_push_back(image->buffer, (byte)value);
     }
     if (strcmp(decl.kind.value, ".ascii") == 0) {
-        for (size_t i = 1; i < strlen(decl.value.value) - 1; i++) {
+        for (size_t i = 0; i < strlen(decl.value.value); i++) {
             vector_push_back(image->buffer, decl.value.value[i]);
+        }
+    }
+    if (strcmp(decl.kind.value, ".sizeof") == 0) {
+        Symbol *sym = image_get_symbol(*image, decl.value.value);
+        if (sym == NULL) {
+            image_add_usage(image, decl.value.value, decl.value.span, image_content_size(*image));
+            return;
+        }
+        foreach(Label, lbl, image->labels) {
+            if (lbl->is_data && strcmp(lbl->name, decl.value.value) == 0) {
+                vector_push_back(image->buffer, lbl->data_size >> 8);
+                vector_push_back(image->buffer, (byte)lbl->data_size);
+            }
         }
     }
 }
@@ -306,4 +342,5 @@ void free_image(void *image) {
     free_vector(&img.sym_table);
     free_vector(&img.labels);
     free_vector(&img.buffer);
+    free_vector(&img.diresctives);
 }

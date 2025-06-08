@@ -34,6 +34,7 @@ void free_vm(void *vm);
 void vm_load_device(VM *vm, const char *device_file, int port_id);
 Port *vm_get_port(VM vm, byte port_id);
 byte vm_get_free_port_id(VM vm);
+void vm_perform_directives(VM *vm);
 
 // Returns 0 if the last instruction was executed, otherwise returns 1
 int exec_instr(VM *vm);

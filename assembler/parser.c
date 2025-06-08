@@ -7,7 +7,7 @@
 #include <assert.h>
 
 Decl new_decl(Token decl_kind, Token decl_value, Span span) {
-    return (Decl){ copy_token(decl_kind), copy_token(decl_value), span };
+    return (Decl){ decl_kind, decl_value, span };
 }
 
 void free_decl(void *decl) {
@@ -19,11 +19,7 @@ void free_decl(void *decl) {
 Instr new_instr(const char *name, vector(Token) ops, Span pos) {
     char *allocated_str = malloc(strlen(name) + 1);
     strcpy(allocated_str, name);
-    vector(Token) new_ops = NULL;
-    foreach(Token, op, ops) {
-        vector_push_back(new_ops, copy_token(*op));
-    }
-    return (Instr){ allocated_str, new_ops, pos };
+    return (Instr){ allocated_str, ops, pos };
 }
 
 void free_instr(void *instr) {
@@ -83,8 +79,40 @@ void instr_check_ops(Instr instr) {
     // ret instruction doesn't need a check (it has no params ;-;)
 }
 
+Directive empty_directive(void) {
+    return (Directive) {
+        .is_empty = true,
+    };
+}
+
+void directive_set_name(Directive *directive, const char *name) {
+    char *buffer = malloc(strlen(name) + 1);
+    strcpy(buffer, name);
+    if (directive->name != NULL) {
+        free((void *)directive->name);
+    }
+    directive->name = buffer;
+}
+
+void directive_check_params(Directive directive) {
+    vector(Token) ops = directive.params;
+
+    if (strcmp(directive.name, "use") == 0) {
+        check_single_op(ops[0], 1, TOKEN_STRING);
+        check_single_op(ops[1], 1, TOKEN_NUMBER);
+    }
+}
+
+void free_directive(void *directive) {
+    Directive *dir = (Directive *)directive;
+    if (!dir->is_empty) {
+        free((void *)dir->name);
+        free_vector(&dir->params);
+    }
+}
+
 Label empty_label(void) {
-    return (Label){ NULL, false, false, (Span){0, 0, 0}, {NULL} };
+    return (Label){ NULL, false, false, 0, (Span){0, 0, 0}, {NULL} };
 }
 
 void label_set_name(Label *label, const char *name) {
@@ -124,7 +152,7 @@ Parser new_parser(const char *filename) {
     do {
         tok = lexer_get_next_token(&lexer);
         vector_push_back(tokens, tok);
-    } while (tok.type != TOKEN_EOF);
+    } while (tok.type != TOKEN_EOF && tok.type != TOKEN_UNKNOWN);
     free_lexer(&lexer);
 
     return (Parser) {
@@ -173,11 +201,25 @@ Token parser_get_checked_token_in_list(Parser parser, size_t pos, size_t types_c
     return new_token(TOKEN_UNKNOWN, "", (Span){0, 0, 0});
 }
 
+Directive parse_directive(Parser *parser) {
+    Directive directive = empty_directive();
+    Token dir_tok = parser_get_checked_token(*parser, parser->idx++, TOKEN_DIRECTIVE);
+    size_t amount_of_params = get_dir_param_count(dir_tok.value);
+    vector(Token) params = NULL;
+    vector_set_destructor(params, free_token);
+    for (size_t i = 0; i < amount_of_params; i++) {
+        Token tok = parser->tokens[parser->idx++];
+        vector_push_back(params, copy_token(tok));
+    }
+    directive_set_name(&directive, dir_tok.value);
+    directive.params = params;
+    directive.is_empty = false;
+    directive_check_params(directive);
+    return directive;
+}
+
 Label parse_label(Parser *parser) {
     Label label = empty_label();
-    if (parser->tokens[parser->idx].type == TOKEN_EOF) {
-        return label;
-    }
     Token lbl_tok = parser_get_checked_token(*parser, parser->idx++, TOKEN_LABEL);
     const char *label_name = lbl_tok.value;
     char *new_name = NULL;
@@ -218,15 +260,23 @@ void parse_declaration(Parser *parser, Label *label) {
     if (parser->tokens[parser->idx].type == TOKEN_EOF) return;
     Token kind = parser_get_checked_token(*parser, parser->idx++, TOKEN_DECL);
     Token value;
-    if (strcmp(kind.value, ".ascii") == 0) {
+    size_t size = 0;
+    if (strcmp(kind.value, ".sizeof") == 0) {
+        value = parser_get_checked_token(*parser, parser->idx++, TOKEN_IDENT);
+        size += 2;
+    } else if (strcmp(kind.value, ".ascii") == 0) {
         value = parser_get_checked_token(*parser, parser->idx++, TOKEN_STRING);
+        size += strlen(value.value);
     } else {
+        if (strcmp(kind.value, ".byte") == 0) size += 1;
+        if (strcmp(kind.value, ".word") == 0) size += 2;
         value = parser_get_checked_token(*parser, parser->idx++, TOKEN_NUMBER);
     }
     Span decl_pos = kind.span;
     decl_pos.len = value.span.column - kind.span.column + value.span.len;
-    Decl decl = new_decl(kind, value, decl_pos);
+    Decl decl = new_decl(copy_token(kind), copy_token(value), decl_pos);
     label_add_decl(label, decl);
+    label->data_size += size;
 }
 
 void parse_instruction(Parser *parser, Label *label) {
@@ -251,7 +301,7 @@ void parse_instruction(Parser *parser, Label *label) {
             char *new_name = mangle_name(parser->last_proper_label_name, tok.value);
             tok.value = new_name;
         }
-        vector_push_back(ops, tok);
+        vector_push_back(ops, copy_token(tok));
         // Because ops are separeted by commas
         if (i != amount_of_ops - 1) {
             Token comma = parser->tokens[parser->idx++];

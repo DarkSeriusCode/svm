@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "common/vector.h"
+#include "common/str.h"
 
 typedef enum {
     TOKEN_UNKNOWN = 0,
@@ -16,6 +17,7 @@ typedef enum {
     TOKEN_DECL,
     TOKEN_STRING,
     TOKEN_CMP,
+    TOKEN_DIRECTIVE,
     TOKEN_EOF,
 } TokenType;
 
@@ -50,15 +52,16 @@ typedef struct {
     char c;
     Span current_span;
     vector(Token) token_buffer;
+    string buffer;
 } Lexer;
 
 Lexer new_lexer(const char *file_name);
-void lexer_advice(Lexer *lexer);
+void lexer_forward(Lexer *lexer);
 Token lex_string(Lexer *lexer);
+Token lex_directive(Lexer *lexer);
 void lexer_skip_whitespaces(Lexer *lexer);
 void lexer_skip_comment(Lexer *lexer);
 Token make_nonterm(const char *buffer, Span token_span);
-Token lexer_push_and_return_nonterm(Lexer *lexer, Token tok, const char *buffer, Span token_span);
 Token lexer_get_next_token(Lexer *lexer);
 void free_lexer(void *lexer);
 

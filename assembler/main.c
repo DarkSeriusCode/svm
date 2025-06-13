@@ -93,10 +93,6 @@ void parse_top_level(Image *image, Parser *parser) {
                 break;
             case TOKEN_LABEL: {
                 Label lbl = parse_label(parser);
-                if (lbl.is_empty) {
-                    warning_empty_label(lbl);
-                    continue;
-                }
                 analyse_label(lbl);
                 image_add_label(image, lbl);
             }; break;

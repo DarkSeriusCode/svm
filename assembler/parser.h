@@ -39,7 +39,6 @@ void free_directive(void *directive);
 typedef struct {
     const char *name;
     bool is_data;
-    bool is_empty;
     size_t data_size; // Only if is_data is true
     Span span;
     union {

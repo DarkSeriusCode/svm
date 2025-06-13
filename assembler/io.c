@@ -312,10 +312,6 @@ void warning_number_out_of_bounds(long num, long lower_bound, long upper_bound, 
                   num, lower_bound, upper_bound);
 }
 
-void warning_empty_label(Label lbl) {
-    print_warning(lbl.span, "Empty label (%s) will be ignored!", lbl.name);
-}
-
 // ------------------------------------------------------------------------------------------------
 
 void note_zero_alignment(Span pos) {

@@ -13,7 +13,7 @@
 #define UNREACHABLE(msg) \
     do { \
         fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, msg); \
-        abort(); \
+        exit(EXIT_FAILURE); \
     } while(0)
 
 bool string_in_args(const char *str, size_t count, ...);

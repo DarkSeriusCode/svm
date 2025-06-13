@@ -3,7 +3,6 @@
 
 #include "image.h"
 #include "lexer.h"
-#include "parser.h"
 #include "common/io.h"
 
 const char *token_type_to_str(TokenType type);
@@ -36,7 +35,6 @@ void error_no_entry(void);
 void error_unknown_directive(Token directive);
 
 void warning_number_out_of_bounds(long num, long lower_bound, long upper_bound, Span pos);
-void warning_empty_label(Label lbl);
 
 void note_zero_alignment(Span pos);
 

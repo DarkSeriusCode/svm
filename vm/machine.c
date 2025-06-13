@@ -67,6 +67,7 @@ static void unload_port(void *port) {
     free_device(&dev);
 }
 
+// TODO: Do not load dirs in the VM's memory
 VM new_vm(const char *program_file) {
     byte *memory = malloc(MEMORY_SIZE);
     size_t program_size = load_program(memory, MEMORY_SIZE, program_file);

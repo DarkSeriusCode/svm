@@ -112,7 +112,7 @@ void free_directive(void *directive) {
 }
 
 Label empty_label(void) {
-    return (Label){ NULL, false, false, 0, (Span){0, 0, 0}, {NULL} };
+    return (Label){ NULL, false, 0, (Span){0, 0, 0}, {NULL} };
 }
 
 void label_set_name(Label *label, const char *name) {
@@ -235,12 +235,10 @@ Label parse_label(Parser *parser) {
     if (parser->tokens[parser->idx].type == TOKEN_LABEL) {
         return label;
     }
-    Token tok = parser->tokens[parser->idx];
+    Token tok = parser_get_checked_token_in_list(*parser, parser->idx, 2, TOKEN_DECL, TOKEN_INSTR);
     if (tok.type != TOKEN_INSTR && tok.type != TOKEN_DECL) {
-        label.is_empty = true;
         return label;
     }
-    label.is_empty = false;
     void (*parser_func)(Parser *, Label *) = &parse_instruction;
 
     if (tok.type == TOKEN_DECL) {

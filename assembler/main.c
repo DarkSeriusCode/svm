@@ -8,8 +8,7 @@
 #include <assert.h>
 #include "io.h"
 #include "common/vector.h"
-#include "common/arch.h"
-#include "image.h"
+#include "program.h"
 #include "parser.h"
 #include "analysis.h"
 #include "common/utils.h"
@@ -21,7 +20,7 @@ bool SHOW_IMAGE = false;
 bool ENABLE_COLORS = true;
 
 void print_help(const char *name);
-void parse_top_level(Image *image, Parser *parser);
+void parse_top_level(Program *prog, Parser *parser);
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -55,8 +54,7 @@ int main(int argc, char *argv[]) {
     while (optind < argc)
         vector_push_back(input_files, argv[optind++]);
 
-    Image image = new_image();
-    vector_push_back_many(image.buffer, byte, 0, 0)
+    Program program = new_program();
 
     foreach(const char *, filename, input_files) {
         INPUT_FILE_NAME = *filename;
@@ -67,34 +65,34 @@ int main(int argc, char *argv[]) {
                 print_token(parser.tokens[i]);
             }
         }
-        parse_top_level(&image, &parser);
+        parse_top_level(&program, &parser);
         free_parser(&parser);
     }
-    image_codegen(&image);
+    program_codegen(&program);
 
     if (SHOW_IMAGE) {
-        print_image(image);
+        print_program(program);
     }
-    image_check_unresolved_names(image);
-    dump_image(image, OUTPUT_FILE_NAME);
+    program_check_unresolved_names(program);
+    dump_program(program, OUTPUT_FILE_NAME);
 
-    free_image(&image);
+    free_program(&program);
     free_vector(&input_files);
 
     return 0;
 }
 
-void parse_top_level(Image *image, Parser *parser) {
+void parse_top_level(Program *prog, Parser *parser) {
     while (parser->tokens[parser->idx].type != TOKEN_EOF) {
         Token tok = parser->tokens[parser->idx];
         switch (tok.type) {
             case TOKEN_DIRECTIVE:
-                image_add_directive(image, parse_directive(parser));
+                program_add_directive(prog, parse_directive(parser));
                 break;
             case TOKEN_LABEL: {
                 Label lbl = parse_label(parser);
                 analyse_label(lbl);
-                image_add_label(image, lbl);
+                program_add_label(prog, lbl);
             }; break;
             default:
                 UNREACHABLE("If you see this, something actually went wrong, create an issue");

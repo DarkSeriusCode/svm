@@ -64,16 +64,16 @@ void print_token(Token tok) {
                                      tok.span.column, tok.span.line);
 }
 
-void print_image(Image img) {
+void print_program(Program prog) {
     printf("Symbol tabel:\n");
     size_t longest_name_len = 0;
-    for (size_t i = 0; i < vector_size(img.sym_table); i++) {
-        size_t name_len = strlen(img.sym_table[i].name);
+    for (size_t i = 0; i < vector_size(prog.sym_table); i++) {
+        size_t name_len = strlen(prog.sym_table[i].name);
         if (longest_name_len < name_len) {
             longest_name_len = name_len;
         }
     }
-    foreach(Symbol, symbol, img.sym_table) {
+    foreach(Symbol, symbol, prog.sym_table) {
         printf("%s", symbol->name);
         for (size_t j = strlen(symbol->name); j < longest_name_len; j++) {
             printf(".");
@@ -92,18 +92,19 @@ void print_image(Image img) {
     }
 
     printf("\nHex:\n");
-    for (size_t i = 0; i < vector_size(img.buffer); i++) {
+    for (size_t i = 0; i < vector_size(prog.buffer); i++) {
         if (i > 0 && i % 16 == 0) {
             printf("\n");
         }
-        printf("%02x ", img.buffer[i]);
+        printf("%02x ", prog.buffer[i]);
     }
     printf("\n");
 }
 
-void dump_image(Image image, const char *filename) {
+// TODO: Get rid of this function because we'll have a better format
+void dump_program(Program prog, const char *filename) {
     FILE *fp = fopen(filename, "wb");
-    fwrite(image.buffer, vector_size(image.buffer), sizeof(byte), fp);
+    fwrite(prog.buffer, vector_size(prog.buffer), sizeof(byte), fp);
     fclose(fp);
 }
 

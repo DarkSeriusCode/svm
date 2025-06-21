@@ -1,4 +1,4 @@
-#include "image.h"
+#include "program.h"
 #include "assembler/lexer.h"
 #include "common/vector.h"
 #include "common/utils.h"
@@ -40,97 +40,101 @@ void free_symbol(void *entry) {
 
 // ------------------------------------------------------------------------------------------------
 
-Image new_image(void) {
+Program new_program(void) {
     vector(Symbol) sym_table = NULL;
     vector_set_destructor(sym_table, free_symbol);
     vector(Label) labels = NULL;
     vector_set_destructor(labels, free_label);
 
-    return (Image) {
+    return (Program) {
         .sym_table = sym_table,
         .labels = labels,
         .buffer = NULL,
     };
 }
 
-void image_add_label(Image *img, Label lbl) {
-    vector_push_back(img->labels, lbl);
-    Symbol *symb = image_get_symbol(*img, lbl.name);
+void program_add_label(Program *prog, Label lbl) {
+    vector_push_back(prog->labels, lbl);
+    Symbol *symb = program_get_symbol(*prog, lbl.name);
     if (!symb) {
-        vector_push_back(img->sym_table, new_symbol(lbl.name, false));
+        vector_push_back(prog->sym_table, new_symbol(lbl.name, false));
     } else {
         error_redefinition(lbl.name, lbl.span);
     }
 }
 
-void image_add_directive(Image *img, Directive dir) {
-    vector_push_back(img->diresctives, dir);
+void program_add_directive(Program *prog, Directive dir) {
+    vector_push_back(prog->diresctives, dir);
 }
 
-void image_codegen(Image *image) {
+void program_codegen(Program *prog) {
+    vector_push_back_many(prog->buffer, byte, 0, 0, 0, 0)
+
     // Dump directives
-    foreach(Directive, dir, image->diresctives) {
-        image_codegen_directive(image, *dir);
+    foreach(Directive, dir, prog->diresctives) {
+        program_codegen_directive(prog, *dir);
     }
+    prog->buffer[0] = program_size(*prog) >> 8;
+    prog->buffer[1] = (byte)(program_size(*prog) & 0xFF);
 
     // Data labels
-    foreach(Label, lbl, image->labels) {
+    foreach(Label, lbl, prog->labels) {
         if (!lbl->is_data) continue;
-        image_add_definition(image, lbl->name, image_content_size(*image));
+        program_add_definition(prog, lbl->name, program_size(*prog));
         foreach(Decl, decl, lbl->declarations) {
-            image_codegen_data(image, *decl);
+            program_codegen_data(prog, *decl);
         }
     }
     // Code labels
-    foreach(Label, lbl, image->labels) {
+    foreach(Label, lbl, prog->labels) {
         if (lbl->is_data) continue;
-        image_add_definition(image, lbl->name, image_content_size(*image));
+        program_add_definition(prog, lbl->name, program_size(*prog));
         foreach(Instr, instr, lbl->instructions) {
-            image_codegen_code(image, *instr);
+            program_codegen_code(prog, *instr);
         }
     }
-    Symbol *entry_point = image_get_symbol(*image, ENTRY_POINT_NAME);
+    Symbol *entry_point = program_get_symbol(*prog, ENTRY_POINT_NAME);
     if (!entry_point || !entry_point->is_resolved) {
         error_no_entry();
     }
-    image->buffer[0] = entry_point->address >> 8;
-    image->buffer[1] = entry_point->address & 0xFF;
-    image_resolve_names(image);
+    prog->buffer[2] = entry_point->address >> 8;
+    prog->buffer[3] = entry_point->address & 0xFF;
+    program_resolve_names(prog);
 }
 
-static void image_subst_address(Image *image, word where, word what) {
-    image->buffer[where]     = what >> 8;
-    image->buffer[where + 1] = what & 0xFF;
+static void program_subst_address(Program *prog, word where, word what) {
+    prog->buffer[where]     = what >> 8;
+    prog->buffer[where + 1] = what & 0xFF;
 }
 
-void image_add_usage(Image *image, const char *name, Span name_pos, word usage_address) {
-    Symbol *definition = image_get_symbol(*image, name);
+void program_add_usage(Program *prog, const char *name, Span name_pos, word usage_address) {
+    Symbol *definition = program_get_symbol(*prog, name);
     if (!definition) {
         Symbol new = new_symbol(name, false);
         symbol_add_usage(&new, usage_address, name_pos);
-        vector_push_back(image->sym_table, new);
+        vector_push_back(prog->sym_table, new);
     } else {
         symbol_add_usage(definition, usage_address, name_pos);
     }
 }
 
-void image_add_definition(Image *image, const char *name, word def_address) {
-    Symbol *definition = image_get_symbol(*image, name);
+void program_add_definition(Program *prog, const char *name, word def_address) {
+    Symbol *definition = program_get_symbol(*prog, name);
     if (!definition) {
         Symbol new = new_symbol(name, true);
         new.address = def_address;
-        vector_push_back(image->sym_table, new);
+        vector_push_back(prog->sym_table, new);
     } else {
         definition->is_resolved = true;
         definition->address = def_address;
     }
 }
 
-void image_resolve_names(Image *image) {
-    foreach(Symbol, symb, image->sym_table) {
+void program_resolve_names(Program *prog) {
+    foreach(Symbol, symb, prog->sym_table) {
         if (symb->is_resolved) {
             foreach(SymbolUsage, usgae, symb->unresolved_usages) {
-                image_subst_address(image, usgae->address, symb->address);
+                program_subst_address(prog, usgae->address, symb->address);
             }
             vector_clean(symb->unresolved_usages);
         }
@@ -138,59 +142,59 @@ void image_resolve_names(Image *image) {
 }
 
 // TODO: Add analysis of dirs
-void image_codegen_directive(Image *image, Directive dir) {
+void program_codegen_directive(Program *prog, Directive dir) {
     byte dir_code = get_dir_code(dir.name);
-    vector_push_back(image->buffer, dir_code);
+    vector_push_back(prog->buffer, dir_code);
     if (strcmp(dir.name, "use") == 0) {
         for (size_t i = 0; i < strlen(dir.params[0].value) + 1; i++) {
-            vector_push_back(image->buffer, dir.params[0].value[i]);
+            vector_push_back(prog->buffer, dir.params[0].value[i]);
         }
         char *unused;
         long port = strtol(dir.params[1].value, &unused, 10);
-        vector_push_back(image->buffer, (byte)port);
+        vector_push_back(prog->buffer, (byte)port);
     }
 }
 
-Symbol *image_get_symbol(Image image, const char *name) {
-    for (size_t i = 0; i < vector_size(image.sym_table); i++) {
-        Symbol s = image.sym_table[i];
+Symbol *program_get_symbol(Program prog, const char *name) {
+    for (size_t i = 0; i < vector_size(prog.sym_table); i++) {
+        Symbol s = prog.sym_table[i];
         if (strcmp(s.name, name) == 0) {
-            return image.sym_table + i;
+            return prog.sym_table + i;
         }
     }
     return NULL;
 }
 
-void image_codegen_data(Image *image, Decl decl) {
+void program_codegen_data(Program *prog, Decl decl) {
     char *UNUSED;
     long value = strtol(decl.value.value, &UNUSED, 10);
     if (strcmp(decl.kind.value, ".align") == 0) {
         for (long i = 0; i < value; i++) {
-            vector_push_back(image->buffer, 0);
+            vector_push_back(prog->buffer, 0);
         }
     }
     if (strcmp(decl.kind.value, ".byte") == 0) {
-        vector_push_back(image->buffer, (byte)value);
+        vector_push_back(prog->buffer, (byte)value);
     }
     if (strcmp(decl.kind.value, ".word") == 0) {
-        vector_push_back(image->buffer, value >> 8);
-        vector_push_back(image->buffer, (byte)value);
+        vector_push_back(prog->buffer, value >> 8);
+        vector_push_back(prog->buffer, (byte)value);
     }
     if (strcmp(decl.kind.value, ".ascii") == 0) {
         for (size_t i = 0; i < strlen(decl.value.value); i++) {
-            vector_push_back(image->buffer, decl.value.value[i]);
+            vector_push_back(prog->buffer, decl.value.value[i]);
         }
     }
     if (strcmp(decl.kind.value, ".sizeof") == 0) {
-        Symbol *sym = image_get_symbol(*image, decl.value.value);
+        Symbol *sym = program_get_symbol(*prog, decl.value.value);
         if (sym == NULL) {
-            image_add_usage(image, decl.value.value, decl.value.span, image_content_size(*image));
+            program_add_usage(prog, decl.value.value, decl.value.span, program_size(*prog));
             return;
         }
-        foreach(Label, lbl, image->labels) {
+        foreach(Label, lbl, prog->labels) {
             if (lbl->is_data && strcmp(lbl->name, decl.value.value) == 0) {
-                vector_push_back(image->buffer, lbl->data_size >> 8);
-                vector_push_back(image->buffer, (byte)lbl->data_size);
+                vector_push_back(prog->buffer, lbl->data_size >> 8);
+                vector_push_back(prog->buffer, (byte)lbl->data_size);
             }
         }
     }
@@ -226,8 +230,8 @@ static void append_register(unsigned long *buffer, size_t *buffer_size, Token re
     *buffer_size += REGISTER_BIT_SIZE;
 }
 
-static void append_ident(unsigned long *buffer, size_t *buffer_size, Image *image, Token ident) {
-    image_add_usage(image, ident.value, ident.span, image_content_size(*image) + *buffer_size / 8);
+static void append_ident(unsigned long *buffer, size_t *buffer_size, Program *prog, Token ident) {
+    program_add_usage(prog, ident.value, ident.span, program_size(*prog) + *buffer_size / 8);
     *buffer <<= 16;
     *buffer_size += 16;
 }
@@ -244,7 +248,7 @@ static void append_cmp(unsigned long *buffer, size_t *buffer_size, Token cmp) {
     *buffer_size += 3;
 }
 
-void image_codegen_code(Image *image, Instr instr) {
+void program_codegen_code(Program *prog, Instr instr) {
     size_t instr_bit_size = 0;
     unsigned long instr_bin_repr = get_instr_opcode(instr.name);
     instr_bit_size += OPCODE_BIT_SIZE;
@@ -260,7 +264,7 @@ void image_codegen_code(Image *image, Instr instr) {
             if (instr.ops[1].type == TOKEN_NUMBER) {
                 append_number(&instr_bin_repr, &instr_bit_size, instr.ops[1]);
             } else {
-                append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[1]);
+                append_ident(&instr_bin_repr, &instr_bit_size, prog, instr.ops[1]);
             }
         }
     }
@@ -276,7 +280,7 @@ void image_codegen_code(Image *image, Instr instr) {
             if (instr.ops[1].type == TOKEN_NUMBER) {
                 append_number(&instr_bin_repr, &instr_bit_size, instr.ops[1]);
             } else {
-                append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[1]);
+                append_ident(&instr_bin_repr, &instr_bit_size, prog, instr.ops[1]);
             }
         }
     }
@@ -285,11 +289,11 @@ void image_codegen_code(Image *image, Instr instr) {
     }
     if (string_in_args(instr.name, 2, "call", "jmp")) {
         append_alignment(&instr_bin_repr, &instr_bit_size, 3);
-        append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[0]);
+        append_ident(&instr_bin_repr, &instr_bit_size, prog, instr.ops[0]);
     }
     if (strcmp(instr.name, "jif") == 0) {
         append_cmp(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
-        append_ident(&instr_bin_repr, &instr_bit_size, image, instr.ops[1]);
+        append_ident(&instr_bin_repr, &instr_bit_size, prog, instr.ops[1]);
     }
     if (string_in_args(instr.name, 2, "in", "out")) {
         append_byte(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
@@ -303,7 +307,7 @@ void image_codegen_code(Image *image, Instr instr) {
             Token op = instr.ops[i];
             if (op.type == TOKEN_IDENT) {
                 append_alignment(&instr_bin_repr, &instr_bit_size, 1);
-                append_ident(&instr_bin_repr, &instr_bit_size, image, op);
+                append_ident(&instr_bin_repr, &instr_bit_size, prog, op);
             } else if (op.type == TOKEN_NUMBER) {
                 append_alignment(&instr_bin_repr, &instr_bit_size, 1);
                 append_number(&instr_bin_repr, &instr_bit_size, op);
@@ -321,26 +325,26 @@ void image_codegen_code(Image *image, Instr instr) {
     for (int i = instr_byte_size - 1; i >= 0; i--) {
         unsigned long mask = 0xff;
         byte b = (instr_bin_repr & (mask << i * 8)) >> i * 8;
-        vector_push_back(image->buffer, b);
+        vector_push_back(prog->buffer, b);
     }
 }
 
-size_t image_content_size(Image image) {
-    return vector_size(image.buffer);
+size_t program_size(Program prog) {
+    return vector_size(prog.buffer);
 }
 
-void image_check_unresolved_names(Image image) {
-    foreach(Symbol, sym, image.sym_table) {
+void program_check_unresolved_names(Program prog) {
+    foreach(Symbol, sym, prog.sym_table) {
         if (!sym->is_resolved) {
             error_unresolved_name(*sym);
         }
     }
 }
 
-void free_image(void *image) {
-    Image img = *(Image *)image;
-    free_vector(&img.sym_table);
-    free_vector(&img.labels);
-    free_vector(&img.buffer);
-    free_vector(&img.diresctives);
+void free_program(void *prog) {
+    Program p = *(Program *)prog;
+    free_vector(&p.sym_table);
+    free_vector(&p.labels);
+    free_vector(&p.buffer);
+    free_vector(&p.diresctives);
 }

@@ -1,7 +1,7 @@
 #ifndef __ASM_IO_H
 #define __ASM_IO_H
 
-#include "image.h"
+#include "program.h"
 #include "lexer.h"
 #include "common/io.h"
 
@@ -11,9 +11,9 @@ void print_line_with_underline(const char *filename, Span span, Color color);
 
 void print_span(Span span);
 void print_token(Token tok);
-void print_image(Image img);
+void print_program(Program prog);
 
-void dump_image(Image image, const char *filename);
+void dump_program(Program prog, const char *filename);
 
 // ------------------------------------------------------------------------------------------------
 

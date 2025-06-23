@@ -14,3 +14,9 @@ bool string_in_args(const char *str, size_t count, ...) {
     va_end(args);
     return false;
 }
+
+bool string_in_array(const char *str, const char *array[], size_t array_len) {
+    for (size_t i = 0; i < array_len; i++)
+        if (strcmp(array[i], str) == 0) return true;
+    return false;
+}

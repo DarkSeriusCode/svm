@@ -1,4 +1,5 @@
 #include "arch.h"
+#include "utils.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -29,40 +30,27 @@ bool in_instruction_set(const char *inst) {
 }
 
 bool in_zero_op_instruction_set(const char *inst) {
-    for (size_t i = 0; i < sizeof(ZERO_OP_INSTRUCTIONS)/sizeof(ZERO_OP_INSTRUCTIONS[0]); i++)
-        if (strcmp(ZERO_OP_INSTRUCTIONS[i], inst) == 0) return true;
-    return false;
+    return string_in_array(inst, ZERO_OP_INSTRUCTIONS, ARRAY_LEN(ZERO_OP_INSTRUCTIONS));
 }
 
 bool in_one_op_instruction_set(const char *inst) {
-    for (size_t i = 0; i < sizeof(ONE_OP_INSTRUCTIONS)/sizeof(ONE_OP_INSTRUCTIONS[0]); i++)
-        if (strcmp(ONE_OP_INSTRUCTIONS[i], inst) == 0) return true;
-    return false;
+    return string_in_array(inst, ONE_OP_INSTRUCTIONS, ARRAY_LEN(ONE_OP_INSTRUCTIONS));
 }
 
 bool in_two_ops_instruction_set(const char *inst) {
-    for (size_t i = 0; i < sizeof(TWO_OPS_INSTRUCTIONS)/sizeof(TWO_OPS_INSTRUCTIONS[0]); i++)
-        if (strcmp(TWO_OPS_INSTRUCTIONS[i], inst) == 0) return true;
-    return false;
+    return string_in_array(inst, TWO_OPS_INSTRUCTIONS, ARRAY_LEN(TWO_OPS_INSTRUCTIONS));
 }
 
 bool in_three_ops_instruction_set(const char *inst) {
-    for (size_t i = 0; i < sizeof(THREE_OPS_INSTRUCTIONS)/sizeof(THREE_OPS_INSTRUCTIONS[0]); i++)
-        if (strcmp(THREE_OPS_INSTRUCTIONS[i], inst) == 0) return true;
-    return false;
+    return string_in_array(inst, THREE_OPS_INSTRUCTIONS, ARRAY_LEN(THREE_OPS_INSTRUCTIONS));
 }
 
-bool in_register_set(const char *inst) {
-    for (size_t i = 0; i < sizeof(REGISTER_SET)/sizeof(REGISTER_SET[0]); i++)
-        if (strcmp(REGISTER_SET[i], inst) == 0) return true;
-    return false;
+bool in_register_set(const char *reg) {
+    return string_in_array(reg, REGISTER_SET, ARRAY_LEN(REGISTER_SET));
 }
 
-// TODO: Get rid of copy-pasted code in here ;-;
 bool in_directive_set(const char *name) {
-    for (size_t i = 0; i < sizeof(DIRECTIVES)/sizeof(DIRECTIVES[0]); i++)
-        if (strcmp(DIRECTIVES[i], name) == 0) return true;
-    return false;
+    return string_in_array(name, DIRECTIVES, ARRAY_LEN(DIRECTIVES));
 }
 
 byte get_instr_opcode(const char *instr_name) {

@@ -36,6 +36,8 @@ char *read_whole_file(const char *filename);
 // Returns the size of the loaded program
 size_t load_program(byte *memory, size_t memory_size, const char *filename);
 
+void error_invalid_file_format(const char *filename);
 void error_file_doesnot_exist(const char *filename);
+void error_couldnot_find_section(const char *section_name);
 
 #endif

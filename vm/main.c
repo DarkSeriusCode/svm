@@ -1,3 +1,4 @@
+#define STR_IMPLEMENTATION
 #define VECTOR_IMPLEMENTATION
 
 #include "common/io.h"

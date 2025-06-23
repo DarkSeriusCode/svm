@@ -1,14 +1,26 @@
-#define STR_IMPLEMENTATION
+// TODO: Навести порядок с функциями портов
+// TODO: Вынести Symbol в common
+// TODO: Навестти порядок с неймингами (привести их к единому стилю), например read_execfile -> execfile_read
 
 #include "machine.h"
 #include "common/io.h"
 #include "common/arch.h"
+#include "common/sex.h"
 #include "io.h"
 #include "common/str.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+
+Symbol new_symbol(const char *name, word declaration_address) {
+    return (Symbol) { new_string(name), declaration_address };
+}
+
+void free_symbol(void *symbol) {
+    Symbol symb = *(Symbol *)symbol;
+    free_string(&symb.name);
+}
 
 word read_word_as_big_endian(byte *memory) {
     word w = memory[0];
@@ -67,27 +79,33 @@ static void unload_port(void *port) {
     free_device(&dev);
 }
 
-// TODO: Do not load dirs in the VM's memory
-VM new_vm(const char *program_file) {
+VM new_vm(const char *input_file) {
+    ExecFile exec_file = read_execfile(input_file);
     byte *memory = malloc(MEMORY_SIZE);
-    size_t program_size = load_program(memory, MEMORY_SIZE, program_file);
 
     vector(Port) ports = NULL;
     vector_set_destructor(ports, unload_port);
+    vector(Symbol) symbol_table = NULL;
+    vector_set_destructor(symbol_table, free_symbol);
 
     VM vm = {
-        .program_size = program_size,
-        .stack_begging = program_size + STACK_OFFSET + STACK_SIZE,
+        .program_size = 0,
+        .stack_begging = 0,
         .memory = memory,
         .ports = ports,
     };
     memset(vm.registers, 0, sizeof(vm.registers));
-    vm.registers[REG_CF] = 0;
-    vm.registers[REG_SP] = program_size + STACK_OFFSET + STACK_SIZE;
-    vm.registers[REG_IP] = read_word_as_big_endian(memory);
-    push_in_stack(&vm, program_size);
 
-    vm_perform_directives(&vm);
+    vm_load_program_section(&vm, exec_file);
+    vm_perform_directives(&vm, exec_file);
+    vm_load_symbol_table(&vm, exec_file);
+
+    foreach(Symbol, s, vm.symbol_table) {
+        if (strcmp(s->name, ENTRY_POINT_NAME) == 0) {
+            vm.registers[REG_IP] = s->declaration_address;
+            break;
+        }
+    }
 
     return vm;
 }
@@ -95,7 +113,64 @@ VM new_vm(const char *program_file) {
 void free_vm(void *vm) {
     VM *v = (VM *)vm;
     free_vector(&v->ports);
+    free_vector(&v->symbol_table);
     free(v->memory);
+}
+
+void vm_load_program_section(VM *vm, ExecFile exec_file) {
+    vector(byte) compiled_program = execfile_get_section_content(exec_file, "program");
+    if (compiled_program == NULL) {
+        error_couldnot_find_section("program");
+    }
+    // WARN:Memory can be overflown if we pass too god damn big program in there
+    memcpy(vm->memory, compiled_program, vector_size(compiled_program));
+    size_t program_size = vector_size(compiled_program);
+    vm->program_size = program_size;
+    vm->stack_begging = program_size + STACK_OFFSET + STACK_MAX_SIZE;
+    vm->registers[REG_SP] = vm->stack_begging;
+    free_vector(&compiled_program);
+    push_in_stack(vm, (word)program_size);
+}
+
+void vm_perform_directives(VM *vm, ExecFile exec_file) {
+    vector(byte) compiled_directives = execfile_get_section_content(exec_file, "directives");
+    if (compiled_directives == NULL) {
+        error_couldnot_find_section("directives");
+    }
+    byte *cursor = compiled_directives;
+    byte *section_end = cursor + vector_size(compiled_directives) - 1;
+    byte dir_code = *cursor++;
+    while (cursor < section_end) {
+        switch (dir_code) {
+            case 0b001: {
+                string path = NULL;
+                while (*cursor != 0) string_push_char(&path, *cursor++);
+                byte port = *(++cursor);
+                vm_load_device(vm, path, port);
+                free_string(&path);
+            }; break;
+        }
+    }
+    free_vector(&compiled_directives);
+}
+
+void vm_load_symbol_table(VM *vm, ExecFile exec_file) {
+    vector(byte) compiled_symbols = execfile_get_section_content(exec_file, "symbols");
+    if (compiled_symbols == NULL) {
+        error_couldnot_find_section("symbols");
+    }
+    byte *cursor = compiled_symbols;
+    byte *section_end = cursor + vector_size(compiled_symbols) - 1;
+    string name = NULL;
+    while (cursor < section_end) {
+        while (*cursor != 0) string_push_char(&name, *cursor++);
+        word addr = read_word_as_big_endian(++cursor);
+        vector_push_back(vm->symbol_table, new_symbol(name, addr));
+        cursor += 2;
+        vector_clean(name);
+    }
+    free_vector(&compiled_symbols);
+    free_string(&name);
 }
 
 void vm_load_device(VM *vm, const char *device_file, int port_id) {
@@ -136,22 +211,6 @@ byte vm_get_free_port_id(VM vm) {
     }
     error_no_free_ports();
     return 0; // UNREACHABLE
-}
-
-void vm_perform_directives(VM *vm) {
-    byte *mem_ptr = vm->memory + 2;
-    byte dir_code = *mem_ptr++;
-    switch (dir_code) {
-        case 0b001: {
-            string path = NULL;
-            for (char *c = (char *)mem_ptr; *c != 0; c = (char *)(++mem_ptr)) {
-                string_push_char(&path, *c);
-            }
-            byte port = *(++mem_ptr);
-            vm_load_device(vm, path, port);
-            free_string(&path);
-        }; break;
-    }
 }
 
 int exec_instr(VM *vm) {
@@ -291,7 +350,6 @@ int exec_instr(VM *vm) {
             }
         }; break;
 
-        // TODO: Extract code that gets args into a separete function/macro
         // out
         case 0b10101: {
             byte port_id = read_byte(&buffer, &read_bits_count);
@@ -358,7 +416,7 @@ int exec_instr(VM *vm) {
 }
 
 void push_in_stack(VM *vm, word value) {
-    if (vm->stack_begging - vm->registers[REG_SP] >= STACK_SIZE) {
+    if (vm->stack_begging - vm->registers[REG_SP] >= STACK_MAX_SIZE) {
         fprintf(stderr, "Stack overflow (vm dumped)\n");
         dump_vm(*vm, "stackowerflow.dump");
         exit(1);

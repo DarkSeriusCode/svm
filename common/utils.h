@@ -8,6 +8,7 @@
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#define ARRAY_LEN(arr) (sizeof(arr)/sizeof(arr[0]))
 
 #define UNUSED(x) (void)(x)
 #define UNREACHABLE(msg) \
@@ -17,5 +18,6 @@
     } while(0)
 
 bool string_in_args(const char *str, size_t count, ...);
+bool string_in_array(const char *str, const char *array[], size_t array_len);
 
 #endif

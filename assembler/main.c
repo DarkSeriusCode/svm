@@ -8,6 +8,7 @@
 #include <assert.h>
 #include "io.h"
 #include "common/vector.h"
+#include "common/sex.h"
 #include "program.h"
 #include "parser.h"
 #include "analysis.h"
@@ -68,16 +69,17 @@ int main(int argc, char *argv[]) {
         parse_top_level(&program, &parser);
         free_parser(&parser);
     }
-    program_codegen(&program);
+    ExecFile output = program_compile(&program);
 
     if (SHOW_IMAGE) {
         print_program(program);
     }
     program_check_unresolved_names(program);
-    dump_program(program, OUTPUT_FILE_NAME);
+    write_execfile(output, OUTPUT_FILE_NAME);
 
     free_program(&program);
     free_vector(&input_files);
+    free_execfile(&output);
 
     return 0;
 }

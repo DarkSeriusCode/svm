@@ -64,6 +64,7 @@ void print_token(Token tok) {
                                      tok.span.column, tok.span.line);
 }
 
+// TODO: Add dirs
 void print_program(Program prog) {
     printf("Symbol tabel:\n");
     size_t longest_name_len = 0;
@@ -90,22 +91,7 @@ void print_program(Program prog) {
         }
         printf("\n");
     }
-
-    printf("\nHex:\n");
-    for (size_t i = 0; i < vector_size(prog.buffer); i++) {
-        if (i > 0 && i % 16 == 0) {
-            printf("\n");
-        }
-        printf("%02x ", prog.buffer[i]);
-    }
     printf("\n");
-}
-
-// TODO: Get rid of this function because we'll have a better format
-void dump_program(Program prog, const char *filename) {
-    FILE *fp = fopen(filename, "wb");
-    fwrite(prog.buffer, vector_size(prog.buffer), sizeof(byte), fp);
-    fclose(fp);
 }
 
 //-------------------------------------------------------------------------------------------------

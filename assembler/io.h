@@ -13,8 +13,6 @@ void print_span(Span span);
 void print_token(Token tok);
 void print_program(Program prog);
 
-void dump_program(Program prog, const char *filename);
-
 // ------------------------------------------------------------------------------------------------
 
 void error_unexpected_token(Token unexpected_token, TokenType expected_token_type);

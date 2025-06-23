@@ -59,21 +59,22 @@ void check_instr_op_bounds(Instr instr) {
     }
 }
 
-void check_data_label(Label label) {
-    foreach(Decl, decl, label.declarations) {
-        check_decl_bounds(*decl);
-    }
-}
-
-void check_code_label(Label label) {
-    foreach(Instr, instr, label.instructions) {
-        check_instr_op_bounds(*instr);
+void analyse_directive(Directive dir) {
+    if (strcmp(dir.name, "use") == 0) {
+        check_number_bounds(dir.params[1], 1);
     }
 }
 
 void analyse_label(Label label) {
-    if (label.is_data) check_data_label(label);
-    else if (label.is_data && strcmp(label.name, ENTRY_POINT_NAME) == 0)
+    if (label.is_data) {
+        foreach(Decl, decl, label.declarations) {
+            check_decl_bounds(*decl);
+        }
+    } else if (label.is_data && strcmp(label.name, ENTRY_POINT_NAME) == 0) {
         error_entry_point_with_decls();
-    else check_code_label(label);
+    } else {
+        foreach(Instr, instr, label.instructions) {
+            check_instr_op_bounds(*instr);
+        }
+    }
 }

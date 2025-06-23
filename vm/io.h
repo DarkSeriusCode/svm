@@ -10,6 +10,7 @@ void error_dev_close(const char *device_file, word status);
 void error_no_device_attached(word port_id);
 void error_no_free_ports(void);
 void error_using_preserve_device(void);
+void error_too_big_program(void);
 
 void dump_vm(VM vm, const char *filename);
 

@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
         print_program(program);
     }
     program_check_unresolved_names(program);
-    write_execfile(output, OUTPUT_FILE_NAME);
+    execfile_write(output, OUTPUT_FILE_NAME);
 
     free_program(&program);
     free_vector(&input_files);
@@ -88,9 +88,11 @@ void parse_top_level(Program *prog, Parser *parser) {
     while (parser->tokens[parser->idx].type != TOKEN_EOF) {
         Token tok = parser->tokens[parser->idx];
         switch (tok.type) {
-            case TOKEN_DIRECTIVE:
-                program_add_directive(prog, parse_directive(parser));
-                break;
+            case TOKEN_DIRECTIVE: {
+                Directive dir = parse_directive(parser);
+                analyse_directive(dir);
+                program_add_directive(prog, dir);
+            }; break;
             case TOKEN_LABEL: {
                 Label lbl = parse_label(parser);
                 analyse_label(lbl);
@@ -108,7 +110,7 @@ void print_help(const char *name) {
     printf("Options:\n");
     printf("  -h          Prints this message and exit\n");
     printf("  -o <file>   Place output to <file>\n");
-    printf("  -i          Prints information about file\n");
+    printf("  -i          Prints information about the program\n");
     printf("  -t          Prints token tree\n");
     printf("  -c          Disables colors in output\n");
 }

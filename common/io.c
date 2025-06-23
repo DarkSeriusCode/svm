@@ -53,4 +53,5 @@ void error_couldnot_find_section(const char *section_name) {
     printf_green("%s", section_name);
     style(STYLE_BOLD);
     printf("\"\n");
+    exit(EXIT_FAILURE);
 }

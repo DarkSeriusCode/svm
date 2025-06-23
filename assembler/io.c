@@ -64,7 +64,6 @@ void print_token(Token tok) {
                                      tok.span.column, tok.span.line);
 }
 
-// TODO: Add dirs
 void print_program(Program prog) {
     printf("Symbol tabel:\n");
     size_t longest_name_len = 0;

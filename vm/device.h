@@ -21,7 +21,7 @@ Device new_device(const char *filename);
 void free_device(void *dev);
 
 typedef struct {
-    word id;
+    byte id;
     Device device;
 } Port;
 

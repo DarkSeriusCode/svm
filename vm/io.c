@@ -50,6 +50,11 @@ void error_using_preserve_device(void) {
     exit(EXIT_FAILURE);
 }
 
+void error_too_big_program(void) {
+    print_error("program cannot be placed into memory (which is %d bytes)", MEMORY_SIZE);
+    exit(EXIT_FAILURE);
+}
+
 void dump_vm(VM vm, const char *filename) {
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) {

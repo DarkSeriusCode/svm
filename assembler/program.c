@@ -98,11 +98,13 @@ static void subst_address(vector(byte) buffer, word where, word what) {
 }
 
 ExecFile program_compile(Program *prog) {
+    ExecFile ef = new_execfile();
     // Compile directives
     vector(byte) compiled_dirs = NULL;
     foreach(Directive, dir, prog->diresctives) {
         program_compile_directive(&compiled_dirs, *dir);
     }
+    if (!vector_empty(compiled_dirs)) execfile_add_section(&ef, "directives", compiled_dirs);
 
     // Compile program
     vector(byte) compiled_program = NULL;
@@ -125,16 +127,13 @@ ExecFile program_compile(Program *prog) {
         error_no_entry();
     }
     program_resolve_names(prog, &compiled_program);
+    if (!vector_empty(compiled_program)) execfile_add_section(&ef, "program", compiled_program);
 
     // Compile symbol table
-    // TODO: If we don't have, for example directives, do not include the empty vector in the section
     vector(byte) compiled_sym_table = NULL;
     program_compile_symbol_table(*prog, &compiled_sym_table);
+    if (!vector_empty(compiled_sym_table)) execfile_add_section(&ef, "symbols", compiled_sym_table);
 
-    ExecFile ef = new_execfile();
-    execfile_add_section(&ef, "directives", compiled_dirs);
-    execfile_add_section(&ef, "symbols", compiled_sym_table);
-    execfile_add_section(&ef, "program", compiled_program);
     return ef;
 }
 
@@ -148,7 +147,6 @@ void program_compile_symbol_table(Program prog, vector(byte) *buffer) {
     }
 }
 
-// TODO: Add analysis of dirs
 void program_compile_directive(vector(byte) *buffer, Directive dir) {
     byte dir_code = get_dir_code(dir.name);
     vector_push_back(*buffer, dir_code);
@@ -339,12 +337,10 @@ void program_resolve_names(Program *prog, vector(byte) *buffer) {
     }
 }
 
-// TODO: Reqrite using foreach
 Symbol *program_get_symbol(Program prog, const char *name) {
-    for (size_t i = 0; i < vector_size(prog.sym_table); i++) {
-        Symbol s = prog.sym_table[i];
-        if (strcmp(s.name, name) == 0) {
-            return prog.sym_table + i;
+    foreach (Symbol, s, prog.sym_table) {
+        if (strcmp(s->name, name) == 0) {
+            return s;
         }
     }
     return NULL;

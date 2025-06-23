@@ -23,8 +23,8 @@ typedef struct {
 
 ExecFile new_execfile(void);
 void execfile_add_section(ExecFile *ef, const char *name, vector(byte) data);
-void write_execfile(ExecFile ef, const char *filepath);
-ExecFile read_execfile(const char *filepath);
+void execfile_write(ExecFile ef, const char *filepath);
+ExecFile execfile_read(const char *filepath);
 SectionHeader *execfile_get_section(ExecFile ef, const char *section_name);
 vector(byte) execfile_get_section_content(ExecFile ef, const char *section_name);
 void free_execfile(void *exec_file);

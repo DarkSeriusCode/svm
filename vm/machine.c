@@ -1,7 +1,3 @@
-// TODO: Навести порядок с функциями портов
-// TODO: Вынести Symbol в common
-// TODO: Навестти порядок с неймингами (привести их к единому стилю), например read_execfile -> execfile_read
-
 #include "machine.h"
 #include "common/io.h"
 #include "common/arch.h"
@@ -80,7 +76,7 @@ static void unload_port(void *port) {
 }
 
 VM new_vm(const char *input_file) {
-    ExecFile exec_file = read_execfile(input_file);
+    ExecFile exec_file = execfile_read(input_file);
     byte *memory = malloc(MEMORY_SIZE);
 
     vector(Port) ports = NULL;
@@ -122,9 +118,11 @@ void vm_load_program_section(VM *vm, ExecFile exec_file) {
     if (compiled_program == NULL) {
         error_couldnot_find_section("program");
     }
-    // WARN:Memory can be overflown if we pass too god damn big program in there
-    memcpy(vm->memory, compiled_program, vector_size(compiled_program));
     size_t program_size = vector_size(compiled_program);
+    if (program_size > MEMORY_SIZE) {
+        error_too_big_program();
+    }
+    memcpy(vm->memory, compiled_program, vector_size(compiled_program));
     vm->program_size = program_size;
     vm->stack_begging = program_size + STACK_OFFSET + STACK_MAX_SIZE;
     vm->registers[REG_SP] = vm->stack_begging;
@@ -134,9 +132,8 @@ void vm_load_program_section(VM *vm, ExecFile exec_file) {
 
 void vm_perform_directives(VM *vm, ExecFile exec_file) {
     vector(byte) compiled_directives = execfile_get_section_content(exec_file, "directives");
-    if (compiled_directives == NULL) {
-        error_couldnot_find_section("directives");
-    }
+    if (!compiled_directives)
+        return;
     byte *cursor = compiled_directives;
     byte *section_end = cursor + vector_size(compiled_directives) - 1;
     byte dir_code = *cursor++;

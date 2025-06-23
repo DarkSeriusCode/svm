@@ -27,7 +27,7 @@ void execfile_add_section(ExecFile *ef, const char *name, vector(byte) data) {
     vector_push_back(ef->sections, new_section(name, section_offset, section_size));
 }
 
-void write_execfile(ExecFile ef, const char *filepath) {
+void execfile_write(ExecFile ef, const char *filepath) {
     FILE *fp = fopen(filepath, "w");
 
     // Magic
@@ -48,7 +48,7 @@ void write_execfile(ExecFile ef, const char *filepath) {
     fclose(fp);
 }
 
-ExecFile read_execfile(const char *filepath) {
+ExecFile execfile_read(const char *filepath) {
     FILE *fp = fopen(filepath, "r");
     ExecFile ef = new_execfile();
 

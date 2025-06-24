@@ -109,7 +109,7 @@ void print_help(const char *name) {
     printf("Usage: %s [options] file\n", name);
     printf("Options:\n");
     printf("  -h          Prints this message and exit\n");
-    printf("  -o <file>   Place output to <file>\n");
+    printf("  -o <file>   Places output to <file>\n");
     printf("  -i          Prints information about the program\n");
     printf("  -t          Prints token tree\n");
     printf("  -c          Disables colors in output\n");

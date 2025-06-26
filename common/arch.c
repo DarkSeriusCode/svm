@@ -2,7 +2,6 @@
 #include "utils.h"
 #include <assert.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 const char *ZERO_OP_INSTRUCTIONS[] = { "ret" };
@@ -21,7 +20,7 @@ Cmp cmp_from_string(const char *string) {
     if (strcmp(string, "lq") == 0) return CMP_LQ;
     if (strcmp(string, "gt") == 0) return CMP_GT;
     if (strcmp(string, "gq") == 0) return CMP_GQ;
-    assert(0 == "Unreachable");
+    UNREACHABLE("If you see this, something actually went wrong, create an issue");
 }
 
 bool in_instruction_set(const char *inst) {

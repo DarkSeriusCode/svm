@@ -291,6 +291,13 @@ void error_unknown_directive(Token directive) {
     exit(EXIT_FAILURE);
 }
 
+void error_no_input_file(void) {
+    style(STYLE_BOLD);
+    printf_red("error: ");
+    printf("no input file\n");
+    exit(EXIT_FAILURE);
+}
+
 // ------------------------------------------------------------------------------------------------
 
 void warning_number_out_of_bounds(long num, long lower_bound, long upper_bound, Span pos) {

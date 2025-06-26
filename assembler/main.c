@@ -55,6 +55,10 @@ int main(int argc, char *argv[]) {
     while (optind < argc)
         vector_push_back(input_files, argv[optind++]);
 
+    if (vector_size(input_files) == 0) {
+        error_no_input_file();
+    }
+
     Program program = new_program();
 
     foreach(const char *, filename, input_files) {

@@ -17,9 +17,7 @@ void free_decl(void *decl) {
 }
 
 Instr new_instr(const char *name, vector(Token) ops, Span pos) {
-    char *allocated_str = malloc(strlen(name) + 1);
-    strcpy(allocated_str, name);
-    return (Instr){ allocated_str, ops, pos };
+    return (Instr){ strdup(name), ops, pos };
 }
 
 void free_instr(void *instr) {
@@ -86,12 +84,7 @@ Directive empty_directive(void) {
 }
 
 void directive_set_name(Directive *directive, const char *name) {
-    char *buffer = malloc(strlen(name) + 1);
-    strcpy(buffer, name);
-    if (directive->name != NULL) {
-        free((void *)directive->name);
-    }
-    directive->name = buffer;
+    directive->name = strdup(name);
 }
 
 void directive_check_params(Directive directive) {
@@ -116,9 +109,7 @@ Label empty_label(void) {
 }
 
 void label_set_name(Label *label, const char *name) {
-    char *allocated_str = malloc(strlen(name) + 1);
-    strcpy(allocated_str, name);
-    label->name = allocated_str;
+    label->name = strdup(name);
 }
 
 void label_add_instr(Label *label, Instr instr) {
@@ -258,7 +249,7 @@ void parse_declaration(Parser *parser, Label *label) {
     if (parser->tokens[parser->idx].type == TOKEN_EOF) return;
     Token kind = parser_get_checked_token(*parser, parser->idx++, TOKEN_DECL);
     Token value;
-    size_t size = 0;
+    word size = 0;
     if (strcmp(kind.value, ".sizeof") == 0) {
         value = parser_get_checked_token(*parser, parser->idx++, TOKEN_IDENT);
         size += 2;

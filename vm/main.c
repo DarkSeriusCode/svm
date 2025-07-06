@@ -4,7 +4,7 @@
 #include "common/io.h"
 #include "io.h"
 #include "common/vector.h"
-#include "vm/machine.h"
+#include "machine.h"
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>

@@ -2,6 +2,7 @@
 #define __ASM_PARSER_H
 
 #include <stdbool.h>
+#include "common/arch.h"
 #include "common/vector.h"
 #include "lexer.h"
 
@@ -39,7 +40,7 @@ void free_directive(void *directive);
 typedef struct {
     const char *name;
     bool is_data;
-    size_t data_size; // Only if is_data is true
+    word data_size; // Only if is_data is true
     Span span;
     union {
         vector(Instr) instructions;

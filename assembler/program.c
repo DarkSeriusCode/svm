@@ -1,5 +1,5 @@
 #include "program.h"
-#include "assembler/lexer.h"
+#include "lexer.h"
 #include "common/vector.h"
 #include "common/utils.h"
 #include "io.h"
@@ -12,13 +12,10 @@
 // ------------------------------------------------------------------------------------------------
 
 Symbol new_symbol(const char *name, bool is_resolved) {
-    assert(name != NULL);
-    char *alloced_name = malloc(strlen(name) + 1);
-    strcpy(alloced_name, name);
     vector(SymbolUsage) usgaes = NULL;
 
     return (Symbol) {
-        .name = alloced_name,
+        .name = strdup(name),
         .address = 0,
         .unresolved_usages = usgaes,
         .is_resolved = is_resolved,
@@ -104,7 +101,10 @@ ExecFile program_compile(Program *prog) {
     foreach(Directive, dir, prog->diresctives) {
         program_compile_directive(&compiled_dirs, *dir);
     }
-    if (!vector_empty(compiled_dirs)) execfile_add_section(&ef, "directives", compiled_dirs);
+    if (!vector_empty(compiled_dirs)) {
+        execfile_add_section(&ef, "directives", compiled_dirs);
+        free_vector(&compiled_dirs);
+    }
 
     // Compile program
     vector(byte) compiled_program = NULL;
@@ -127,12 +127,18 @@ ExecFile program_compile(Program *prog) {
         error_no_entry();
     }
     program_resolve_names(prog, &compiled_program);
-    if (!vector_empty(compiled_program)) execfile_add_section(&ef, "program", compiled_program);
+    if (!vector_empty(compiled_program)) {
+        execfile_add_section(&ef, "program", compiled_program);
+        free_vector(&compiled_program);
+    }
 
     // Compile symbol table
     vector(byte) compiled_sym_table = NULL;
     program_compile_symbol_table(*prog, &compiled_sym_table);
-    if (!vector_empty(compiled_sym_table)) execfile_add_section(&ef, "symbols", compiled_sym_table);
+    if (!vector_empty(compiled_sym_table)) {
+        execfile_add_section(&ef, "symbols", compiled_sym_table);
+        free_vector(&compiled_sym_table);
+    }
 
     return ef;
 }
@@ -142,8 +148,7 @@ void program_compile_symbol_table(Program prog, vector(byte) *buffer) {
         for (size_t i = 0; i < strlen(symb->name) + 1; i++) {
             vector_push_back(*buffer, symb->name[i]);
         }
-        vector_push_back(*buffer, symb->address >> 8);
-        vector_push_back(*buffer, symb->address & 0xFF);
+        vector_push_word_back(*buffer, symb->address);
     }
 }
 
@@ -172,8 +177,7 @@ void program_compile_data(Program *prog, vector(byte) *buffer, Decl decl) {
         vector_push_back(*buffer, (byte)value);
     }
     if (strcmp(decl.kind.value, ".word") == 0) {
-        vector_push_back(*buffer, value >> 8);
-        vector_push_back(*buffer, (byte)value);
+        vector_push_word_back(*buffer, value);
     }
     if (strcmp(decl.kind.value, ".ascii") == 0) {
         for (size_t i = 0; i < strlen(decl.value.value); i++) {
@@ -188,8 +192,7 @@ void program_compile_data(Program *prog, vector(byte) *buffer, Decl decl) {
         }
         foreach(Label, lbl, prog->labels) {
             if (lbl->is_data && strcmp(lbl->name, decl.value.value) == 0) {
-                vector_push_back(*buffer, lbl->data_size >> 8);
-                vector_push_back(*buffer, (byte)lbl->data_size);
+                vector_push_word_back(*buffer, lbl->data_size);
             }
         }
     }

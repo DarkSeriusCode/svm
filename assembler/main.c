@@ -1,3 +1,4 @@
+// FIX: Memory leaks, despite the fact that nobody cares about them in compilers
 #define VECTOR_IMPLEMENTATION
 #define STR_IMPLEMENTATION
 
@@ -33,23 +34,12 @@ int main(int argc, char *argv[]) {
     int res = 0;
     while ( (res = getopt(argc, argv, "hcito:")) != -1 ) {
         switch (res) {
-            case 'h':
-                print_help(argv[0]);
-                return 0;
-            case '?':
-                return 1;
-            case 't':
-                SHOW_TOKENS = true;
-                break;
-            case 'i':
-                SHOW_IMAGE = true;
-                break;
-            case 'c':
-                ENABLE_COLORS = false;
-                break;
-            case 'o':
-                OUTPUT_FILE_NAME = optarg;
-                break;
+            case 'h': print_help(argv[0]); return 0;
+            case 't': SHOW_TOKENS = true; break;
+            case 'i': SHOW_IMAGE = true; break;
+            case 'c': ENABLE_COLORS = false; break;
+            case 'o': OUTPUT_FILE_NAME = optarg; break;
+            case '?': return 1;
         }
     }
     while (optind < argc)

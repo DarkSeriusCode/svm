@@ -10,19 +10,12 @@
 #include "common/utils.h"
 
 Token new_token(TokenType type, const char *value, Span span) {
-    char *val = NULL;
-    if (value != 0) {
-        val = malloc(strlen(value) + 1);
-        strcpy(val, value);
-    }
-    return (Token) { type, val, span };
+    return (Token) { type, strdup(value), span };
 }
 
 Token copy_token(Token tok) {
-    char *str = malloc(strlen(tok.value) + 1);
-    strcpy(str, tok.value);
     Token t = {
-        .value = str,
+        .value = strdup(tok.value),
         .type = tok.type,
         .span = tok.span,
     };

@@ -170,7 +170,7 @@ void program_compile_data(Program *prog, vector(byte) *buffer, Decl decl) {
     long value = strtol(decl.value.value, &UNUSED, 10);
     if (strcmp(decl.kind.value, ".align") == 0) {
         for (long i = 0; i < value; i++) {
-            vector_push_back(buffer, 0);
+            vector_push_back(*buffer, 0);
         }
     }
     if (strcmp(decl.kind.value, ".byte") == 0) {

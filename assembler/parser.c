@@ -256,6 +256,10 @@ void parse_declaration(Parser *parser, Label *label) {
     } else if (strcmp(kind.value, ".ascii") == 0) {
         value = parser_get_checked_token(*parser, parser->idx++, TOKEN_STRING);
         size += strlen(value.value);
+    } else if (strcmp(kind.value, ".align") == 0) {
+        char *unused;
+        value = parser_get_checked_token(*parser, parser->idx++, TOKEN_NUMBER);
+        size += strtol(value.value, &unused, 10);
     } else {
         if (strcmp(kind.value, ".byte") == 0) size += 1;
         if (strcmp(kind.value, ".word") == 0) size += 2;

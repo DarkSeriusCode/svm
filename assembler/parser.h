@@ -16,12 +16,12 @@ Decl new_decl(Token decl_kind, Token decl_value, Span span);
 void free_decl(void *decl);
 
 typedef struct {
-    const char *name;
+    InstrOpcode opcode;
     vector(Token) ops;
     Span span;
 } Instr;
 
-Instr new_instr(const char *name, vector(Token) ops, Span pos);
+Instr new_instr(InstrOpcode opcode, vector(Token) ops, Span pos);
 void free_instr(void *instr);
 void instr_check_ops(Instr instr);
 void check_single_op(Token op, size_t expected_types_count, ...);

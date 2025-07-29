@@ -29,6 +29,33 @@ typedef enum {
 } Cmp;
 Cmp cmp_from_string(const char *string);
 
+typedef enum {
+    INSTR_MOV  = 0b00001,
+    INSTR_LD,
+    INSTR_ST,
+    INSTR_ADD,
+    INSTR_SUB,
+    INSTR_MUL,
+    INSTR_DIV,
+    INSTR_NOT,
+    INSTR_PUSH,
+    INSTR_POP,
+    INSTR_CALL,
+    INSTR_RET,
+    INSTR_AND,
+    INSTR_OR,
+    INSTR_XOR,
+    INSTR_SHL,
+    INSTR_SHR,
+    INSTR_JMP,
+    INSTR_CMP,
+    INSTR_JIF,
+    INSTR_OUT,
+    INSTR_IN,
+} InstrOpcode;
+InstrOpcode instropcode_from_str(const char *string);
+
+
 bool in_instruction_set(const char *inst);
 bool in_zero_op_instruction_set(const char *inst);
 bool in_one_op_instruction_set(const char *inst);
@@ -37,7 +64,6 @@ bool in_three_ops_instruction_set(const char *inst);
 bool in_register_set(const char *reg);
 bool in_directive_set(const char *dir);
 
-byte get_instr_opcode(const char *instr_name);
 byte get_register_code(const char *reg_name);
 byte get_dir_param_count(const char *dir_name);
 byte get_dir_code(const char *dir_name);

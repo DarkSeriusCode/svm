@@ -16,8 +16,8 @@ void free_decl(void *decl) {
     free_token(&d->value);
 }
 
-Instr new_instr(const char *name, vector(Token) ops, Span pos) {
-    return (Instr){ strdup(name), ops, pos };
+Instr new_instr(InstrOpcode opcode, vector(Token) ops, Span pos) {
+    return (Instr){ opcode, ops, pos };
 }
 
 void free_instr(void *instr) {
@@ -47,29 +47,29 @@ void check_single_op(Token op, size_t expected_types_count, ...) {
 }
 
 void instr_check_ops(Instr instr) {
-    const char *instr_name = instr.name;
     vector(Token) ops = instr.ops;
 
-    if (string_in_args(instr_name, 4, "mov", "load", "store", "cmp")) {
+    if (instropcode_in_args(instr.opcode, 4, INSTR_MOV, INSTR_LD, INSTR_ST, INSTR_CMP)) {
         check_single_op(ops[0], 1, TOKEN_REG);
         check_single_op(ops[1], 3, TOKEN_REG, TOKEN_NUMBER, TOKEN_IDENT);
     }
-    if (string_in_args(instr_name, 9, "add", "sub", "mul", "div", "and", "or", "xor", "shl", "shr"))
+    if (instropcode_in_args(instr.opcode, 9, INSTR_ADD, INSTR_SUB, INSTR_MUL, INSTR_DIV, INSTR_AND,
+                                             INSTR_OR, INSTR_OR, INSTR_SHL, INSTR_SHR))
     {
         check_single_op(ops[0], 1, TOKEN_REG);
         check_single_op(ops[1], 3, TOKEN_REG, TOKEN_NUMBER, TOKEN_IDENT);
     }
-    if (string_in_args(instr_name, 3, "not", "push", "pop")) {
+    if (instropcode_in_args(instr.opcode, 3, INSTR_NOT, INSTR_PUSH, INSTR_POP)) {
         check_single_op(ops[0], 1, TOKEN_REG);
     }
-    if (string_in_args(instr_name, 2, "call", "jmp")) {
+    if (instropcode_in_args(instr.opcode, 2, INSTR_CALL, INSTR_JMP)) {
         check_single_op(ops[0], 1, TOKEN_IDENT);
     }
-    if (strcmp(instr_name, "jif") == 0) {
+    if (instr.opcode == INSTR_JIF) {
         check_single_op(ops[0], 1, TOKEN_CMP);
         check_single_op(ops[1], 1, TOKEN_IDENT);
     }
-    if (string_in_args(instr_name, 2, "out", "in")) {
+    if (instropcode_in_args(instr.opcode, 2, INSTR_OUT, INSTR_IN)) {
         check_single_op(ops[0], 1, TOKEN_NUMBER);
         check_single_op(ops[1], 3, TOKEN_NUMBER, TOKEN_IDENT, TOKEN_REG);
         check_single_op(ops[2], 3, TOKEN_NUMBER, TOKEN_IDENT, TOKEN_REG);
@@ -308,7 +308,7 @@ void parse_instruction(Parser *parser, Label *label) {
         instr_pos.len = ops[amount_of_ops].span.column - instr_token.span.column
                         + ops[amount_of_ops].span.len;
     }
-    Instr instr = new_instr(instr_token.value, ops, instr_pos);
+    Instr instr = new_instr(instropcode_from_str(instr_token.value), ops, instr_pos);
     instr_check_ops(instr);
     label_add_instr(label, instr);
 }

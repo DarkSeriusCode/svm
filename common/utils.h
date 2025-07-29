@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "vector.h"
+#include "arch.h"
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -26,5 +27,7 @@
 
 bool string_in_args(const char *str, size_t count, ...);
 bool string_in_array(const char *str, const char *array[], size_t array_len);
+
+bool instropcode_in_args(InstrOpcode opcode, size_t count, ...);
 
 #endif

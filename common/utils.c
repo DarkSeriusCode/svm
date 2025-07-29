@@ -20,3 +20,16 @@ bool string_in_array(const char *str, const char *array[], size_t array_len) {
         if (strcmp(array[i], str) == 0) return true;
     return false;
 }
+
+bool instropcode_in_args(InstrOpcode opcode, size_t count, ...) {
+    va_list args;
+    va_start(args, count);
+    for (size_t i = 0; i < count; i++) {
+        if (opcode == va_arg(args, InstrOpcode)) {
+            va_end(args);
+            return true;
+        }
+    }
+    va_end(args);
+    return false;
+}

@@ -50,9 +50,9 @@ void check_decl_bounds(Decl decl) {
 }
 
 void check_instr_op_bounds(Instr instr) {
-    if (strcmp(instr.name, "call") == 0) return;
+    if (instr.opcode == INSTR_CALL) return;
 
-    if (string_in_args(instr.name, 2, "in", "out")) {
+    if (instropcode_in_args(instr.opcode, 2, INSTR_IN, INSTR_OUT)) {
         check_number_bounds(instr.ops[0], 1);
     } else if (vector_size(instr.ops) == 2 && instr.ops[1].type != TOKEN_REG){
         check_number_bounds(instr.ops[1], 2);

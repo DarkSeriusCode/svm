@@ -6,7 +6,7 @@
 
 const char *ZERO_OP_INSTRUCTIONS[] = { "ret" };
 const char *ONE_OP_INSTRUCTIONS[] = { "push", "pop", "call", "not", "jmp" };
-const char *TWO_OPS_INSTRUCTIONS[] = { "load", "store", "mov", "add", "sub", "mul", "div",
+const char *TWO_OPS_INSTRUCTIONS[] = { "ld", "str", "mov", "add", "sub", "mul", "div",
                                        "and", "or", "xor", "shl", "shr", "cmp", "jif" };
 const char *THREE_OPS_INSTRUCTIONS[] = { "out", "in" };
 const char *DIRECTIVES[] = { "use" };
@@ -20,6 +20,33 @@ Cmp cmp_from_string(const char *string) {
     if (strcmp(string, "lq") == 0) return CMP_LQ;
     if (strcmp(string, "gt") == 0) return CMP_GT;
     if (strcmp(string, "gq") == 0) return CMP_GQ;
+    UNREACHABLE("If you see this, something actually went wrong, create an issue");
+}
+
+InstrOpcode instropcode_from_str(const char *string) {
+    if (strcmp(string, "mov") == 0)  return INSTR_MOV;
+    if (strcmp(string, "ld") == 0)   return INSTR_LD;
+    if (strcmp(string, "str") == 0)   return INSTR_ST;
+    if (strcmp(string, "add") == 0)  return INSTR_ADD;
+    if (strcmp(string, "sub") == 0)  return INSTR_SUB;
+    if (strcmp(string, "mul") == 0)  return INSTR_MUL;
+    if (strcmp(string, "div") == 0)  return INSTR_DIV;
+    if (strcmp(string, "not") == 0)  return INSTR_NOT;
+    if (strcmp(string, "push") == 0) return INSTR_PUSH;
+    if (strcmp(string, "pop") == 0)  return INSTR_POP;
+    if (strcmp(string, "call") == 0) return INSTR_CALL;
+    if (strcmp(string, "ret") == 0)  return INSTR_RET;
+    if (strcmp(string, "and") == 0)  return INSTR_AND;
+    if (strcmp(string, "or") == 0)   return INSTR_OR;
+    if (strcmp(string, "xor") == 0)  return INSTR_XOR;
+    if (strcmp(string, "shl") == 0)  return INSTR_SHL;
+    if (strcmp(string, "shr") == 0)  return INSTR_SHR;
+    if (strcmp(string, "jmp") == 0)  return INSTR_JMP;
+    if (strcmp(string, "cmp") == 0)  return INSTR_CMP;
+    if (strcmp(string, "jif") == 0)  return INSTR_JIF;
+    if (strcmp(string, "out") == 0)  return INSTR_OUT;
+    if (strcmp(string, "in") == 0)   return INSTR_IN;
+    printf(string);
     UNREACHABLE("If you see this, something actually went wrong, create an issue");
 }
 
@@ -50,33 +77,6 @@ bool in_register_set(const char *reg) {
 
 bool in_directive_set(const char *name) {
     return string_in_array(name, DIRECTIVES, ARRAY_LEN(DIRECTIVES));
-}
-
-byte get_instr_opcode(const char *instr_name) {
-    byte opcode = 0;
-    if (strcmp(instr_name, "mov") == 0) opcode = 0b00001;
-    if (strcmp(instr_name, "load") == 0) opcode = 0b00010;
-    if (strcmp(instr_name, "store") == 0) opcode = 0b00011;
-    if (strcmp(instr_name, "add") == 0) opcode = 0b00100;
-    if (strcmp(instr_name, "sub") == 0) opcode = 0b00101;
-    if (strcmp(instr_name, "mul") == 0) opcode = 0b00110;
-    if (strcmp(instr_name, "div") == 0) opcode = 0b00111;
-    if (strcmp(instr_name, "not") == 0) opcode = 0b01000;
-    if (strcmp(instr_name, "push") == 0) opcode = 0b01001;
-    if (strcmp(instr_name, "pop") == 0) opcode = 0b01010;
-    if (strcmp(instr_name, "call") == 0) opcode = 0b01011;
-    if (strcmp(instr_name, "ret") == 0) opcode = 0b01100;
-    if (strcmp(instr_name, "and") == 0) opcode = 0b01101;
-    if (strcmp(instr_name, "or") == 0) opcode = 0b01110;
-    if (strcmp(instr_name, "xor") == 0) opcode = 0b01111;
-    if (strcmp(instr_name, "shl") == 0) opcode = 0b10000;
-    if (strcmp(instr_name, "shr") == 0) opcode = 0b10001;
-    if (strcmp(instr_name, "jmp") == 0) opcode = 0b10010;
-    if (strcmp(instr_name, "cmp") == 0) opcode = 0b10011;
-    if (strcmp(instr_name, "jif") == 0) opcode = 0b10100;
-    if (strcmp(instr_name, "out") == 0) opcode = 0b10101;
-    if (strcmp(instr_name, "in") == 0) opcode = 0b10110;
-    return opcode;
 }
 
 byte get_register_code(const char *reg_name) {

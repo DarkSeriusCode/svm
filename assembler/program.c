@@ -4,6 +4,7 @@
 #include "common/utils.h"
 #include "io.h"
 #include <assert.h>
+#include <stdint.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -250,10 +251,10 @@ static void append_cmp(unsigned long *buffer, size_t *buffer_size, Token cmp) {
 
 void program_compile_code(Program *prog, vector(byte) *buffer, Instr instr) {
     size_t instr_bit_size = 0;
-    unsigned long instr_bin_repr = get_instr_opcode(instr.name);
+    uint64_t instr_bin_repr = (uint64_t)instr.opcode;
     instr_bit_size += OPCODE_BIT_SIZE;
 
-    if (string_in_args(instr.name, 4, "mov", "load", "store", "cmp")) {
+    if (instropcode_in_args(instr.opcode, 4, INSTR_MOV, INSTR_LD, INSTR_ST, INSTR_CMP)) {
         append_register(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
         if (instr.ops[1].type == TOKEN_REG) {
             append_bit(&instr_bin_repr, &instr_bit_size, 0);
@@ -268,7 +269,8 @@ void program_compile_code(Program *prog, vector(byte) *buffer, Instr instr) {
             }
         }
     }
-    if (string_in_args(instr.name, 9, "add", "sub", "mul", "div", "and", "or", "xor", "shl", "shr"))
+    if (instropcode_in_args(instr.opcode, 9, INSTR_ADD, INSTR_SUB, INSTR_MUL, INSTR_DIV, INSTR_AND,
+                                             INSTR_OR, INSTR_OR, INSTR_SHL, INSTR_SHR))
     {
         append_register(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
         if (instr.ops[1].type == TOKEN_REG) {
@@ -284,18 +286,18 @@ void program_compile_code(Program *prog, vector(byte) *buffer, Instr instr) {
             }
         }
     }
-    if (string_in_args(instr.name, 3, "not", "push", "pop")) {
+    if (instropcode_in_args(instr.opcode, 3, INSTR_NOT, INSTR_PUSH, INSTR_POP)) {
         append_register(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
     }
-    if (string_in_args(instr.name, 2, "call", "jmp")) {
+    if (instropcode_in_args(instr.opcode, 2, INSTR_CALL, INSTR_JMP)) {
         append_alignment(&instr_bin_repr, &instr_bit_size, 3);
         append_ident(&instr_bin_repr, &instr_bit_size, prog, *buffer, instr.ops[0]);
     }
-    if (strcmp(instr.name, "jif") == 0) {
+    if (instr.opcode == INSTR_JIF) {
         append_cmp(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
         append_ident(&instr_bin_repr, &instr_bit_size, prog, *buffer, instr.ops[1]);
     }
-    if (string_in_args(instr.name, 2, "in", "out")) {
+    if (instropcode_in_args(instr.opcode, 2, INSTR_OUT, INSTR_IN)) {
         append_byte(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
 
         if (instr.ops[1].type == TOKEN_REG) append_bit(&instr_bin_repr, &instr_bit_size, 0);

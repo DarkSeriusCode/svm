@@ -52,9 +52,9 @@ typedef enum {
     INSTR_JIF,
     INSTR_OUT,
     INSTR_IN,
+    INSTR_COUNT,
 } InstrOpcode;
 InstrOpcode instropcode_from_str(const char *string);
-
 
 bool in_instruction_set(const char *inst);
 bool in_zero_op_instruction_set(const char *inst);

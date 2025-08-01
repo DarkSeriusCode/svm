@@ -4,11 +4,19 @@
 #include <stdint.h>
 #include <string.h>
 
-const char *ZERO_OP_INSTRUCTIONS[] = { "ret" };
-const char *ONE_OP_INSTRUCTIONS[] = { "push", "pop", "call", "not", "jmp" };
-const char *TWO_OPS_INSTRUCTIONS[] = { "ld", "str", "mov", "add", "sub", "mul", "div",
-                                       "and", "or", "xor", "shl", "shr", "cmp", "jif" };
-const char *THREE_OPS_INSTRUCTIONS[] = { "out", "in" };
+const InstrOpcode ZERO_OP_INSTRUCTIONS[] = { INSTR_RET };
+const InstrOpcode ONE_OP_INSTRUCTIONS[] = {
+    INSTR_PUSH, INSTR_POP, INSTR_CALL,
+    INSTR_NOT, INSTR_JMP
+};
+const InstrOpcode TWO_OPS_INSTRUCTIONS[] = {
+    INSTR_LD, INSTR_ST, INSTR_MOV, INSTR_ADD,
+    INSTR_SUB, INSTR_MUL, INSTR_DIV, INSTR_AND,
+    INSTR_OR, INSTR_XOR, INSTR_SHL, INSTR_SHR,
+    INSTR_CMP, INSTR_JIF
+};
+const InstrOpcode THREE_OPS_INSTRUCTIONS[] = { INSTR_IN, INSTR_OUT };
+
 const char *DIRECTIVES[] = { "use" };
 const char *REGISTER_SET[] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10",
                                "r11", "r12",  "sp", "ip", "cf" };
@@ -46,8 +54,7 @@ InstrOpcode instropcode_from_str(const char *string) {
     if (strcmp(string, "jif") == 0)  return INSTR_JIF;
     if (strcmp(string, "out") == 0)  return INSTR_OUT;
     if (strcmp(string, "in") == 0)   return INSTR_IN;
-    printf(string);
-    UNREACHABLE("If you see this, something actually went wrong, create an issue");
+    return INSTR_COUNT;
 }
 
 bool in_instruction_set(const char *inst) {
@@ -56,19 +63,23 @@ bool in_instruction_set(const char *inst) {
 }
 
 bool in_zero_op_instruction_set(const char *inst) {
-    return string_in_array(inst, ZERO_OP_INSTRUCTIONS, ARRAY_LEN(ZERO_OP_INSTRUCTIONS));
+    InstrOpcode opcode = instropcode_from_str(inst);
+    return instropcode_in_array(opcode, ZERO_OP_INSTRUCTIONS, ARRAY_LEN(ZERO_OP_INSTRUCTIONS));
 }
 
 bool in_one_op_instruction_set(const char *inst) {
-    return string_in_array(inst, ONE_OP_INSTRUCTIONS, ARRAY_LEN(ONE_OP_INSTRUCTIONS));
+    InstrOpcode opcode = instropcode_from_str(inst);
+    return instropcode_in_array(opcode, ONE_OP_INSTRUCTIONS, ARRAY_LEN(ONE_OP_INSTRUCTIONS));
 }
 
 bool in_two_ops_instruction_set(const char *inst) {
-    return string_in_array(inst, TWO_OPS_INSTRUCTIONS, ARRAY_LEN(TWO_OPS_INSTRUCTIONS));
+    InstrOpcode opcode = instropcode_from_str(inst);
+    return instropcode_in_array(opcode, TWO_OPS_INSTRUCTIONS, ARRAY_LEN(TWO_OPS_INSTRUCTIONS));
 }
 
 bool in_three_ops_instruction_set(const char *inst) {
-    return string_in_array(inst, THREE_OPS_INSTRUCTIONS, ARRAY_LEN(THREE_OPS_INSTRUCTIONS));
+    InstrOpcode opcode = instropcode_from_str(inst);
+    return instropcode_in_array(opcode, THREE_OPS_INSTRUCTIONS, ARRAY_LEN(THREE_OPS_INSTRUCTIONS));
 }
 
 bool in_register_set(const char *reg) {

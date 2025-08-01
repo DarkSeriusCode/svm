@@ -29,5 +29,6 @@ bool string_in_args(const char *str, size_t count, ...);
 bool string_in_array(const char *str, const char *array[], size_t array_len);
 
 bool instropcode_in_args(InstrOpcode opcode, size_t count, ...);
+bool instropcode_in_array(InstrOpcode opcode, const InstrOpcode *array, size_t array_len);
 
 #endif

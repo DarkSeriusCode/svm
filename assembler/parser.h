@@ -27,13 +27,11 @@ void instr_check_ops(Instr instr);
 void check_single_op(Token op, size_t expected_types_count, ...);
 
 typedef struct {
-    const char *name;
-    bool is_empty;
+    DirOpcode opcode;
     vector(Token) params;
 } Directive;
 
-Directive empty_directive(void);
-void directive_set_name(Directive *directive, const char *name);
+Directive new_directive(DirOpcode opcode, vector(Token) params);
 void directive_check_params(Directive directive);
 void free_directive(void *directive);
 

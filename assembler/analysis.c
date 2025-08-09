@@ -60,7 +60,7 @@ void check_instr_op_bounds(Instr instr) {
 }
 
 void analyse_directive(Directive dir) {
-    if (strcmp(dir.name, "use") == 0) {
+    if (dir.opcode == DIR_USE) {
         check_number_bounds(dir.params[1], 1);
     }
 }

@@ -77,20 +77,14 @@ void instr_check_ops(Instr instr) {
     // ret instruction doesn't need a check (it has no params ;-;)
 }
 
-Directive empty_directive(void) {
-    return (Directive) {
-        .is_empty = true,
-    };
-}
-
-void directive_set_name(Directive *directive, const char *name) {
-    directive->name = strdup(name);
+Directive new_directive(DirOpcode opcode, vector(Token) params) {
+    return (Directive) { opcode, params };
 }
 
 void directive_check_params(Directive directive) {
     vector(Token) ops = directive.params;
 
-    if (strcmp(directive.name, "#use") == 0) {
+    if (directive.opcode == DIR_USE) {
         check_single_op(ops[0], 1, TOKEN_STRING);
         check_single_op(ops[1], 1, TOKEN_NUMBER);
     }
@@ -98,8 +92,7 @@ void directive_check_params(Directive directive) {
 
 void free_directive(void *directive) {
     Directive *dir = (Directive *)directive;
-    if (!dir->is_empty) {
-        free((void *)dir->name);
+    if (dir->opcode != DIR_COUNT) {
         free_vector(&dir->params);
     }
 }
@@ -193,7 +186,6 @@ Token parser_get_checked_token_in_list(Parser parser, size_t pos, size_t types_c
 }
 
 Directive parse_directive(Parser *parser) {
-    Directive directive = empty_directive();
     Token dir_tok = parser_get_checked_token(*parser, parser->idx++, TOKEN_DIRECTIVE);
     size_t amount_of_params = get_dir_param_count(dir_tok.value);
     vector(Token) params = NULL;
@@ -202,11 +194,9 @@ Directive parse_directive(Parser *parser) {
         Token tok = parser->tokens[parser->idx++];
         vector_push_back(params, copy_token(tok));
     }
-    directive_set_name(&directive, dir_tok.value);
-    directive.params = params;
-    directive.is_empty = false;
-    directive_check_params(directive);
-    return directive;
+    Directive dir = new_directive(diropcode_from_str(dir_tok.value), params);
+    directive_check_params(dir);
+    return dir;
 }
 
 Label parse_label(Parser *parser) {

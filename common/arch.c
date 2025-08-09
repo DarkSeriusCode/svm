@@ -17,7 +17,7 @@ const InstrOpcode TWO_OPS_INSTRUCTIONS[] = {
 };
 const InstrOpcode THREE_OPS_INSTRUCTIONS[] = { INSTR_IN, INSTR_OUT };
 
-const char *DIRECTIVES[] = { "#use" };
+const DirOpcode DIRECTIVES[] = { DIR_USE };
 const char *REGISTER_SET[] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10",
                                "r11", "r12",  "sp", "ip", "cf" };
 
@@ -34,7 +34,7 @@ Cmp cmp_from_string(const char *string) {
 InstrOpcode instropcode_from_str(const char *string) {
     if (strcmp(string, "mov") == 0)  return INSTR_MOV;
     if (strcmp(string, "ld") == 0)   return INSTR_LD;
-    if (strcmp(string, "str") == 0)   return INSTR_ST;
+    if (strcmp(string, "str") == 0)  return INSTR_ST;
     if (strcmp(string, "add") == 0)  return INSTR_ADD;
     if (strcmp(string, "sub") == 0)  return INSTR_SUB;
     if (strcmp(string, "mul") == 0)  return INSTR_MUL;
@@ -55,6 +55,11 @@ InstrOpcode instropcode_from_str(const char *string) {
     if (strcmp(string, "out") == 0)  return INSTR_OUT;
     if (strcmp(string, "in") == 0)   return INSTR_IN;
     return INSTR_COUNT;
+}
+
+DirOpcode diropcode_from_str(const char *string) {
+    if (strcmp(string, "#use") == 0) return DIR_USE;
+    return DIR_COUNT;
 }
 
 bool in_instruction_set(const char *inst) {
@@ -87,7 +92,8 @@ bool in_register_set(const char *reg) {
 }
 
 bool in_directive_set(const char *name) {
-    return string_in_array(name, DIRECTIVES, ARRAY_LEN(DIRECTIVES));
+    DirOpcode opcode = diropcode_from_str(name);
+    return diropcode_in_array(opcode, DIRECTIVES, ARRAY_LEN(DIRECTIVES));
 }
 
 byte get_register_code(const char *reg_name) {

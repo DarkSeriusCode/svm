@@ -154,9 +154,9 @@ void program_compile_symbol_table(Program prog, vector(byte) *buffer) {
 }
 
 void program_compile_directive(vector(byte) *buffer, Directive dir) {
-    byte dir_code = get_dir_code(dir.name);
+    byte dir_code = (byte)dir.opcode;
     vector_push_back(*buffer, dir_code);
-    if (strcmp(dir.name, "#use") == 0) {
+    if (dir.opcode == DIR_USE) {
         for (size_t i = 0; i < strlen(dir.params[0].value) + 1; i++) {
             vector_push_back(*buffer, dir.params[0].value[i]);
         }

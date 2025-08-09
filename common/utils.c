@@ -39,3 +39,9 @@ bool instropcode_in_array(InstrOpcode opcode, const InstrOpcode *array, size_t a
         if (array[i] == opcode) return true;
     return false;
 }
+
+bool diropcode_in_array(DirOpcode opcode, const DirOpcode *array, size_t array_len) {
+    for (size_t i = 0; i < array_len; i++)
+        if (array[i] == opcode) return true;
+    return false;
+}

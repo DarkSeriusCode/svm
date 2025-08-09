@@ -56,6 +56,12 @@ typedef enum {
 } InstrOpcode;
 InstrOpcode instropcode_from_str(const char *string);
 
+typedef enum {
+    DIR_USE = 0b001,
+    DIR_COUNT,
+} DirOpcode;
+DirOpcode diropcode_from_str(const char *string);
+
 bool in_instruction_set(const char *inst);
 bool in_zero_op_instruction_set(const char *inst);
 bool in_one_op_instruction_set(const char *inst);

@@ -28,7 +28,11 @@
 bool string_in_args(const char *str, size_t count, ...);
 bool string_in_array(const char *str, const char *array[], size_t array_len);
 
+// TODO: Cast this shit to int and just use int_in_args/int_in_array
+
 bool instropcode_in_args(InstrOpcode opcode, size_t count, ...);
 bool instropcode_in_array(InstrOpcode opcode, const InstrOpcode *array, size_t array_len);
+
+bool diropcode_in_array(DirOpcode opcode, const DirOpcode *array, size_t array_len);
 
 #endif

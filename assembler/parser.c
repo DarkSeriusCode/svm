@@ -90,7 +90,7 @@ void directive_set_name(Directive *directive, const char *name) {
 void directive_check_params(Directive directive) {
     vector(Token) ops = directive.params;
 
-    if (strcmp(directive.name, "use") == 0) {
+    if (strcmp(directive.name, "#use") == 0) {
         check_single_op(ops[0], 1, TOKEN_STRING);
         check_single_op(ops[1], 1, TOKEN_NUMBER);
     }

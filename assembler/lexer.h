@@ -59,7 +59,6 @@ typedef struct {
 Lexer new_lexer(const char *file_name);
 void lexer_forward(Lexer *lexer);
 Token lex_string(Lexer *lexer);
-Token lex_directive(Lexer *lexer);
 void lexer_skip_whitespaces(Lexer *lexer);
 void lexer_skip_comment(Lexer *lexer);
 Token make_nonterm(const char *buffer, Span token_span);

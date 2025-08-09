@@ -73,8 +73,8 @@ Lexer new_lexer(const char *file_name) {
         error_empty_file();
     }
     return (Lexer){
-        .i = 0,
-        .c = 0,
+        .i = 1,
+        .c = source[0],
         .source_file = source,
         .current_span = (Span){ 1, 1, 0 },
         .file_name = file_name,
@@ -106,19 +106,9 @@ Token lex_string(Lexer *lexer) {
     }
     vector_push_back(buff, '\0');
     Token str = new_token(TOKEN_STRING, buff, calc_span(lexer->current_span, strlen(buff) + 2));
+    lexer_forward(lexer);
     free_vector(&buff);
     return str;
-}
-
-Token lex_directive(Lexer *lexer) {
-    Token dir_ident = lexer_get_next_token(lexer);
-    Span span = calc_span(lexer->current_span, strlen(dir_ident.value) + 1);
-    span.column--;
-    Token dir = new_token(TOKEN_DIRECTIVE, dir_ident.value, span);
-    if (!in_directive_set(dir.value)) {
-        error_unknown_directive(dir);
-    }
-    return dir;
 }
 
 void lexer_skip_whitespaces(Lexer *lexer) {
@@ -149,7 +139,6 @@ Token lexer_get_next_token(Lexer *lexer) {
         vector_erase(lexer->token_buffer, 0);
         return tok;
     }
-    lexer_forward(lexer);
     do {
         // if the entire line is a comment it will skip it.
         lexer_skip_comment(lexer);
@@ -158,53 +147,47 @@ Token lexer_get_next_token(Lexer *lexer) {
             return new_token(TOKEN_EOF, "EOF", lexer->current_span);
     } while (isspace(lexer->c) || lexer->c == ';');
 
-    while (!isspace(lexer->c)) {
-        switch (lexer->c) {
-            case '"': return lex_string(lexer);
-            case ';': lexer_skip_comment(lexer); continue;
-            case ',': {
-                Token comma = new_token(TOKEN_COMMA, ",", calc_span(lexer->current_span, 1));
-                if (strlen(lexer->buffer) > 0) {
-                    vector_push_back(lexer->token_buffer, comma);
-                } else {
-                    return comma;
-                }
-            }; break;
-            case ':': {
-                Span pos = calc_span(lexer->current_span, strlen(lexer->buffer));
-                pos.column--;
-                if (!is_ident(lexer->buffer)) {
-                    error_invalid_name(lexer->buffer, "label", pos);
-                }
-                return new_token(TOKEN_LABEL, lexer->buffer, pos);
-            }; break;
-            case '#': return lex_directive(lexer);
-            default:
-                string_push_char(&lexer->buffer, tolower(lexer->c));
-                tok_span = calc_span(lexer->current_span, strlen(lexer->buffer));
-        }
+    switch (lexer->c) {
+        case '"': return lex_string(lexer);
+        case ';': lexer_skip_comment(lexer); break;
+        case ',':
+            lexer_forward(lexer);
+            return new_token(TOKEN_COMMA, ",", lexer->current_span);
+    }
 
-        // Terms
-        if (string_in_args(lexer->buffer, 5, ".byte", ".word", ".align", ".ascii", ".sizeof"))
-            return new_token(TOKEN_DECL, lexer->buffer, tok_span);
-        if (is_cmp(lexer->buffer)) {
-            return new_token(TOKEN_CMP, lexer->buffer, tok_span);
+    while (!isspace(lexer->c) && lexer->c != ',') {
+        if (lexer->c == ':') {
+            lexer_forward(lexer);
+            return new_token(TOKEN_LABEL, lexer->buffer, tok_span);
         }
-        if (in_instruction_set(lexer->buffer))
-            return new_token(TOKEN_INSTR, lexer->buffer, tok_span);
-        if (is_reg(lexer->buffer)) {
-            if (!in_register_set(lexer->buffer))
-                error_unknown_register(lexer->buffer, tok_span);
-            return new_token(TOKEN_REG, lexer->buffer, tok_span);
-        }
-        const char *incorrect_at = is_incorrect(lexer->buffer);
-        if (incorrect_at != NULL) {
-            tok_span.column += tok_span.len - 1;
-            tok_span.len = 1;
-            error_invalid_character(tok_span);
-        }
+        string_push_char(&lexer->buffer, tolower(lexer->c));
+        tok_span = calc_span(lexer->current_span, strlen(lexer->buffer));
         lexer_forward(lexer);
     }
+
+    // Terms
+    if (in_directive_set(lexer->buffer)) {
+        return new_token(TOKEN_DIRECTIVE, lexer->buffer, tok_span);
+    }
+    if (string_in_args(lexer->buffer, 5, ".byte", ".word", ".align", ".ascii", ".sizeof"))
+        return new_token(TOKEN_DECL, lexer->buffer, tok_span);
+    if (is_cmp(lexer->buffer)) {
+        return new_token(TOKEN_CMP, lexer->buffer, tok_span);
+    }
+    if (in_instruction_set(lexer->buffer))
+        return new_token(TOKEN_INSTR, lexer->buffer, tok_span);
+    if (is_reg(lexer->buffer)) {
+        if (!in_register_set(lexer->buffer))
+            error_unknown_register(lexer->buffer, tok_span);
+        return new_token(TOKEN_REG, lexer->buffer, tok_span);
+    }
+    const char *incorrect_at = is_incorrect(lexer->buffer);
+    if (incorrect_at != NULL) {
+        tok_span.column += tok_span.len - 1;
+        tok_span.len = 1;
+        error_invalid_character(tok_span);
+    }
+
     return make_nonterm(lexer->buffer, tok_span);
 }
 

@@ -17,7 +17,7 @@ const InstrOpcode TWO_OPS_INSTRUCTIONS[] = {
 };
 const InstrOpcode THREE_OPS_INSTRUCTIONS[] = { INSTR_IN, INSTR_OUT };
 
-const char *DIRECTIVES[] = { "use" };
+const char *DIRECTIVES[] = { "#use" };
 const char *REGISTER_SET[] = { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10",
                                "r11", "r12",  "sp", "ip", "cf" };
 
@@ -112,12 +112,12 @@ byte get_register_code(const char *reg_name) {
 }
 
 byte get_dir_param_count(const char *dir_name) {
-    if (strcmp(dir_name, "use") == 0) return 2;
+    if (strcmp(dir_name, "#use") == 0) return 2;
     return 0;
 }
 
 byte get_dir_code(const char *dir_name) {
     assert(in_directive_set(dir_name));
-    if (strcmp(dir_name, "use") == 0) return 0b001;
+    if (strcmp(dir_name, "#use") == 0) return 0b001;
     return -1;
 }

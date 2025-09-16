@@ -72,7 +72,7 @@ void instr_check_ops(Instr instr) {
     if (instropcode_in_args(instr.opcode, 2, INSTR_OUT, INSTR_IN)) {
         check_single_op(ops[0], 1, TOKEN_NUMBER);
         check_single_op(ops[1], 3, TOKEN_NUMBER, TOKEN_IDENT, TOKEN_REG);
-        check_single_op(ops[2], 3, TOKEN_NUMBER, TOKEN_IDENT, TOKEN_REG);
+        check_single_op(ops[2], 2, TOKEN_NUMBER, TOKEN_REG);
     }
     // ret instruction doesn't need a check (it has no params ;-;)
 }

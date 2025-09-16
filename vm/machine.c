@@ -418,8 +418,8 @@ void push_in_stack(VM *vm, word value) {
         dump_vm(*vm, "stackowerflow.dump");
         exit(1);
     }
-    vm->memory[vm->registers[REG_SP]--] = value >> 8;
-    vm->memory[vm->registers[REG_SP]--] = value & 0xff;
+    vm->memory[--vm->registers[REG_SP]] = value >> 8;
+    vm->memory[--vm->registers[REG_SP]] = value & 0xff;
 }
 
 word pop_from_stack(VM *vm) {
@@ -428,7 +428,7 @@ word pop_from_stack(VM *vm) {
         dump_vm(*vm, "stackisempty.dump");
         exit(1);
     }
-    word value = vm->memory[++vm->registers[REG_SP]];
-    value |= vm->memory[++vm->registers[REG_SP]];
+    word value = vm->memory[vm->registers[REG_SP]++];
+    value |= vm->memory[vm->registers[REG_SP]++];
     return value;
 }

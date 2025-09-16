@@ -81,14 +81,14 @@ vm: $(VM_BIN)
 
 DEVS = $(patsubst $(DEV_DIR)/%.c, $(DEV_BIN_DIR)/%.so, $(wildcard $(DEV_DIR)/*.c))
 
-$(DEV_BIN_DIR)/%.so: $(DEV_DIR)/%.c $(HEADERS)
+$(DEV_BIN_DIR)/console.so: $(DEV_DIR)/console.c $(HEADERS)
 	$(CC) $(DEV_FLAGS) $(CC_FLAGS) $< -o $@
 
 .PHONY: dev
 dev: $(DEVS)
 
 # -------------------------------------------------------------------------------------------------
-#  EXAMPLES
+# EXAMPLES
 
 EXAMPLES = $(patsubst $(EXAPMLES_DIR)/%.asm, $(EXAPMLES_BIN_DIR)/%, $(wildcard $(EXAPMLES_DIR)/*.asm))
 
@@ -104,3 +104,6 @@ examples: $(EXAMPLES)
 clean:
 	rm -rf build
 
+.PHONY: clean_dump
+clean_dump:
+	rm -rf *.dump

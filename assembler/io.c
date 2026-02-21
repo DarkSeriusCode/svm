@@ -168,7 +168,8 @@ void error_unexpected_token_in_args(Token unexpected_token, size_t types_count, 
 }
 
 void error_unexpected_token_in_vec(Token unexpected_token, vector(TokenType) types) {
-    print_error(unexpected_token.span, "Syntax error. Unexpected token!", "Expected");
+    print_error(unexpected_token.span, "Syntax error. Unexpected token!", NULL);
+    printf("  Expected");
     for (size_t i = 0; i < vector_size(types); i++) {
         style(STYLE_BOLD);
         printf_green(" %s", token_type_to_str(types[i]));

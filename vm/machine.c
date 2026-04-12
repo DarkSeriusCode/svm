@@ -177,7 +177,7 @@ void vm_load_device(VM *vm, const char *device_file, int port_id) {
         printf("Device %s attached to port %d\n", device_file, id);
     }
     if (id == 0) {
-        error_using_preserve_device();
+        error_using_preserve_port();
     }
     Device dev = new_device(device_file);
     Port p = { id, dev };

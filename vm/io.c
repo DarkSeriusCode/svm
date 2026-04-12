@@ -45,8 +45,8 @@ void error_no_free_ports(void) {
     exit(EXIT_FAILURE);
 }
 
-void error_using_preserve_device(void) {
-    print_error("device 0 is reserved");
+void error_using_preserve_port(void) {
+    print_error("port 0 is reserved");
     exit(EXIT_FAILURE);
 }
 

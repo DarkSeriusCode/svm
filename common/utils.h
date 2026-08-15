@@ -15,7 +15,7 @@
 #define UNUSED(x) (void)(x)
 #define UNREACHABLE(msg) \
     do { \
-        fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, msg); \
+        fprintf(stderr, "UNREACHABLE: %s:%d: %s\n", __FILE__, __LINE__, msg); \
         exit(EXIT_FAILURE); \
     } while(0)
 

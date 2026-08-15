@@ -32,7 +32,7 @@ void check_single_op(Token op, size_t expected_types_count, ...) {
     for (size_t i = 0; i < expected_types_count; i++) {
         TokenType tt = va_arg(args, TokenType);
         vector_push_back(types, tt);
-        if (op.type == tt) {
+        if ((TokenType)op.type == tt) {
             return;
         }
     }
@@ -132,6 +132,10 @@ Parser new_parser(const char *filename) {
     vector(Token) tokens = NULL;
     vector_set_destructor(tokens, free_token);
     Lexer lexer = new_lexer(filename);
+    // TODO: Fix to adopt new scheme
+    if (strlen(lexer.source_file) == 0) {
+        error_empty_file();
+    }
     Token tok;
     do {
         tok = lexer_get_next_token(&lexer);
@@ -159,7 +163,7 @@ Token parser_get_checked_token(Parser parser, size_t pos, TokenType tok_type) {
     if ((tok.type == TOKEN_IDENT || tok.type == TOKEN_INSTR) && tok_type == TOKEN_LABEL) {
         error_missed_label(tok.type, tok.span);
     }
-    if (tok.type != tok_type) {
+    if ((TokenType)tok.type != tok_type) {
         error_unexpected_token(tok, tok_type);
     }
     return tok;
@@ -173,7 +177,7 @@ Token parser_get_checked_token_in_list(Parser parser, size_t pos, size_t types_c
 
     for (size_t i = 0; i < types_count; i++) {
         TokenType t = va_arg(args, TokenType);
-        if (tok.type == t) {
+        if ((TokenType)tok.type == t) {
             va_end(args);
             free_vector(&types);
             return tok;

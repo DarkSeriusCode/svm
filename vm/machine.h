@@ -7,9 +7,11 @@
 #include "vm/device.h"
 #include <stdio.h>
 
-#define STACK_MAX_SIZE 64 * 2 // Size in bytes
+#define STACK_MAX_SIZE 64 * 3 // Size in bytes
 #define STACK_OFFSET 8
 
+// TODO: Implement dynamically sized memory, so I don't have to allocate 2^32 bytes at once
+// only when program tries to access that memory
 #define MEMORY_SIZE 256 * 256
 
 word read_word_as_big_endian(byte *memory);

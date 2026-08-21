@@ -21,6 +21,8 @@
 
 #define vector_push_word_back(vec, w) \
     do { \
+        vector_push_back(vec, w >> 24); \
+        vector_push_back(vec, w >> 16); \
         vector_push_back(vec, w >> 8); \
         vector_push_back(vec, w & 0xFF); \
     } while(0)

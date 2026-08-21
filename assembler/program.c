@@ -2,6 +2,7 @@
 #include "lexer.h"
 #include "common/vector.h"
 #include "common/utils.h"
+#include "common/bitarray.h"
 #include "io.h"
 #include <assert.h>
 #include <stdint.h>
@@ -91,8 +92,10 @@ void program_add_definition(Program *prog, const char *name, word def_address) {
 }
 
 static void subst_address(vector(byte) buffer, word where, word what) {
-    buffer[where]     = what >> 8;
-    buffer[where + 1] = what & 0xFF;
+    buffer[where++] = what >> 24;
+    buffer[where++] = what >> 16;
+    buffer[where++] = what >> 8;
+    buffer[where] = what & 0xFF;
 }
 
 ExecFile program_compile(Program *prog) {
@@ -199,136 +202,117 @@ void program_compile_data(Program *prog, vector(byte) *buffer, Decl decl) {
     }
 }
 
-static void append_byte(unsigned long *buffer, size_t *buffer_size, Token number) {
+static void append_byte(BitArray *buffer, Token number) {
     char *strend;
     long num = strtol(number.value, &strend, 10);
-    *buffer <<= 8;
-    *buffer |= num & 0xFF;
-    *buffer_size += 8;
+    bitarray_push_nbits(buffer, 8, num);
 }
 
-static void append_number(unsigned long *buffer, size_t *buffer_size, Token number) {
+static void append_number(BitArray *buffer, Token number) {
     char *strend;
     long num = strtol(number.value, &strend, 10);
-    *buffer <<= 8;
-    *buffer |= (word)(num >> 8);
-    *buffer <<= 8;
-    *buffer |= (word)(num & 0xff);
-    *buffer_size += 16;
+    bitarray_push_nbits(buffer, 32, num);
 }
 
-static void append_bit(unsigned long *buffer, size_t *buffer_size, int bit) {
-    *buffer <<= 1;
-    *buffer |= bit;
-    *buffer_size += 1;
+static void append_bit(BitArray *buffer, int bit) {
+    bitarray_push_bit(buffer, bit);
 }
 
-static void append_register(unsigned long *buffer, size_t *buffer_size, Token reg) {
-    *buffer <<= REGISTER_BIT_SIZE;
-    *buffer |= get_register_code(reg.value);
-    *buffer_size += REGISTER_BIT_SIZE;
+static void append_register(BitArray *buffer, Token reg) {
+    bitarray_push_nbits(buffer, REGISTER_BIT_SIZE, get_register_code(reg.value));
 }
 
-static void append_ident(unsigned long *buffer, size_t *buffer_size, Program *prog,
-                         vector(byte) prog_buffer, Token ident)
-{
-    program_add_usage(prog, ident.value, ident.span, vector_size(prog_buffer) + *buffer_size / 8);
-    *buffer <<= 16;
-    *buffer_size += 16;
+static void append_ident(BitArray *buffer, Program *prog, vector(byte) prog_buffer, Token ident) {
+    program_add_usage(prog, ident.value, ident.span, vector_size(prog_buffer) + buffer->size / 8);
+    bitarray_push_nbits(buffer, 32, 0);
 }
 
-static void append_alignment(unsigned long *buffer, size_t *buffer_size, size_t alignment) {
-    *buffer <<= alignment;
-    *buffer_size += alignment;
+static void append_alignment(BitArray *buffer, size_t alignment) {
+    bitarray_push_nbits(buffer, alignment, 0);
 }
 
-static void append_cmp(unsigned long *buffer, size_t *buffer_size, Token cmp) {
+static void append_cmp(BitArray *buffer, Token cmp) {
     Cmp c = cmp_from_string(cmp.value);
-    *buffer <<= 3;
-    *buffer |= c;
-    *buffer_size += 3;
+    bitarray_push_nbits(buffer, 3, c);
 }
 
 void program_compile_code(Program *prog, vector(byte) *buffer, Instr instr) {
-    size_t instr_bit_size = 0;
-    uint64_t instr_bin_repr = (uint64_t)instr.opcode;
-    instr_bit_size += OPCODE_BIT_SIZE;
+    // TODO: Clean it up
+    // TODO: Remove required size
+    BitArray instr_bin_repr = new_bitarray();
+    bitarray_push_nbits(&instr_bin_repr, OPCODE_BIT_SIZE, instr.opcode);
 
     if (instropcode_in_args(instr.opcode, 4, INSTR_MOV, INSTR_LD, INSTR_ST, INSTR_CMP)) {
-        append_register(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
+        append_register(&instr_bin_repr, instr.ops[0]);
         if (instr.ops[1].type == TOKEN_REG) {
-            append_bit(&instr_bin_repr, &instr_bit_size, 0);
-            append_register(&instr_bin_repr, &instr_bit_size, instr.ops[1]);
+            append_bit(&instr_bin_repr, 0);
+            append_register(&instr_bin_repr, instr.ops[1]);
         } else {
-            append_bit(&instr_bin_repr, &instr_bit_size, 1);
-            append_alignment(&instr_bin_repr, &instr_bit_size, 6);
+            append_bit(&instr_bin_repr, 1);
+            append_alignment(&instr_bin_repr, 6);
             if (instr.ops[1].type == TOKEN_NUMBER) {
-                append_number(&instr_bin_repr, &instr_bit_size, instr.ops[1]);
+                append_number(&instr_bin_repr, instr.ops[1]);
             } else {
-                append_ident(&instr_bin_repr, &instr_bit_size, prog, *buffer, instr.ops[1]);
+                append_ident(&instr_bin_repr, prog, *buffer, instr.ops[1]);
             }
         }
     }
     if (instropcode_in_args(instr.opcode, 9, INSTR_ADD, INSTR_SUB, INSTR_MUL, INSTR_DIV, INSTR_AND,
                                              INSTR_OR, INSTR_OR, INSTR_SHL, INSTR_SHR))
     {
-        append_register(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
+        append_register(&instr_bin_repr, instr.ops[0]);
         if (instr.ops[1].type == TOKEN_REG) {
-            append_bit(&instr_bin_repr, &instr_bit_size, 0);
-            append_register(&instr_bin_repr, &instr_bit_size, instr.ops[1]);
+            append_bit(&instr_bin_repr, 0);
+            append_register(&instr_bin_repr, instr.ops[1]);
         } else {
-            append_bit(&instr_bin_repr, &instr_bit_size, 1);
-            append_alignment(&instr_bin_repr, &instr_bit_size, 6);
+            append_bit(&instr_bin_repr, 1);
+            append_alignment(&instr_bin_repr, 6);
             if (instr.ops[1].type == TOKEN_NUMBER) {
-                append_number(&instr_bin_repr, &instr_bit_size, instr.ops[1]);
+                append_number(&instr_bin_repr, instr.ops[1]);
             } else {
-                append_ident(&instr_bin_repr, &instr_bit_size, prog, *buffer, instr.ops[1]);
+                append_ident(&instr_bin_repr, prog, *buffer, instr.ops[1]);
             }
         }
     }
     if (instropcode_in_args(instr.opcode, 3, INSTR_NOT, INSTR_PUSH, INSTR_POP)) {
-        append_register(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
+        append_register(&instr_bin_repr, instr.ops[0]);
     }
     if (instropcode_in_args(instr.opcode, 2, INSTR_CALL, INSTR_JMP)) {
-        append_alignment(&instr_bin_repr, &instr_bit_size, 3);
-        append_ident(&instr_bin_repr, &instr_bit_size, prog, *buffer, instr.ops[0]);
+        append_alignment(&instr_bin_repr, 3);
+        append_ident(&instr_bin_repr, prog, *buffer, instr.ops[0]);
     }
     if (instr.opcode == INSTR_JIF) {
-        append_cmp(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
-        append_ident(&instr_bin_repr, &instr_bit_size, prog, *buffer, instr.ops[1]);
+        append_cmp(&instr_bin_repr, instr.ops[0]);
+        append_ident(&instr_bin_repr, prog, *buffer, instr.ops[1]);
     }
     if (instropcode_in_args(instr.opcode, 2, INSTR_OUT, INSTR_IN)) {
-        append_byte(&instr_bin_repr, &instr_bit_size, instr.ops[0]);
+        append_byte(&instr_bin_repr, instr.ops[0]);
 
-        if (instr.ops[1].type == TOKEN_REG) append_bit(&instr_bin_repr, &instr_bit_size, 0);
-        else append_bit(&instr_bin_repr, &instr_bit_size, 1);
-        if (instr.ops[2].type == TOKEN_REG) append_bit(&instr_bin_repr, &instr_bit_size, 0);
-        else append_bit(&instr_bin_repr, &instr_bit_size, 1);
+        if (instr.ops[1].type == TOKEN_REG) append_bit(&instr_bin_repr, 0);
+        else append_bit(&instr_bin_repr, 1);
+        if (instr.ops[2].type == TOKEN_REG) append_bit(&instr_bin_repr, 0);
+        else append_bit(&instr_bin_repr, 1);
 
         for (size_t i = 1; i <= 2; i++) {
             Token op = instr.ops[i];
             if (op.type == TOKEN_IDENT) {
-                append_alignment(&instr_bin_repr, &instr_bit_size, 1);
-                append_ident(&instr_bin_repr, &instr_bit_size, prog, *buffer, op);
+                append_alignment(&instr_bin_repr, 1);
+                append_ident(&instr_bin_repr, prog, *buffer, op);
             } else if (op.type == TOKEN_NUMBER) {
-                append_alignment(&instr_bin_repr, &instr_bit_size, 1);
-                append_number(&instr_bin_repr, &instr_bit_size, op);
+                append_alignment(&instr_bin_repr, 1);
+                append_number(&instr_bin_repr, op);
             } else {
-                append_register(&instr_bin_repr, &instr_bit_size, op);
+                append_register(&instr_bin_repr, op);
             }
         }
     }
 
-    size_t instr_byte_size = instr_bit_size / 8;
-    if (instr_bit_size / 8.0 > (int)(instr_bit_size / 8.0)) {
-        instr_byte_size += 1;
+    size_t instr_byte_size = bitarray_byte_size(instr_bin_repr);
+    for (size_t i = 0; i < instr_byte_size; i++) {
+        vector_push_back(*buffer, instr_bin_repr.buffer[i]);
     }
-    instr_bin_repr <<= instr_byte_size * 8 - instr_bit_size;
-    for (int i = instr_byte_size - 1; i >= 0; i--) {
-        unsigned long mask = 0xff;
-        byte b = (instr_bin_repr & (mask << i * 8)) >> i * 8;
-        vector_push_back(*buffer, b);
-    }
+
+    free_bitarray(&instr_bin_repr);
 }
 
 void program_resolve_names(Program *prog, vector(byte) *buffer) {

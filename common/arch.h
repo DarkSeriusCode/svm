@@ -3,9 +3,10 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef unsigned char byte;
-typedef unsigned short word;
+typedef uint32_t word;
 
 #define OPCODE_BIT_SIZE 5
 #define REGISTER_BIT_SIZE 4

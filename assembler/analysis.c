@@ -3,6 +3,7 @@
 #include "io.h"
 #include <assert.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 
 void check_number_bounds(Token op, size_t should_has_size) {
@@ -20,11 +21,11 @@ void check_number_bounds(Token op, size_t should_has_size) {
         }
     } else {
         if (n < 0) {
-            lower_bound = SHRT_MIN;
-            upper_bound = SHRT_MAX;
+            lower_bound = INT32_MIN;
+            upper_bound = INT32_MAX;
         } else {
             lower_bound = 0;
-            upper_bound = USHRT_MAX;
+            upper_bound = UINT32_MAX;
         }
     }
     if (!(lower_bound <= n && n <= upper_bound)) {

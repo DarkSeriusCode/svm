@@ -6,7 +6,6 @@
 #include "lexer.h"
 #include "io.h"
 #include "common/arch.h"
-#include "common/io.h"
 #include "common/utils.h"
 
 bool is_reg(const char *buffer) {

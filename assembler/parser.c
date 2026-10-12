@@ -132,8 +132,7 @@ Parser new_parser(const char *filename) {
     vector(Token) tokens = NULL;
     vector_set_destructor(tokens, free_token);
     Lexer lexer = new_lexer(filename);
-    // TODO: Fix to adopt new scheme
-    if (strlen(lexer.source_file) == 0) {
+    if (lexer.source_len == 0) {
         error_empty_file();
     }
     Token tok;

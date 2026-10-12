@@ -256,6 +256,7 @@ int exec_instr(VM *vm) {
                 addr = vm->registers[read_register(&buffer, &total_read_bits)];
             }
             word value = vm->registers[src_reg];
+            // BUG: WTF?
             vm->memory[addr++] = value >> 8;
             vm->memory[addr] = value & 0xff;
         }; break;
@@ -294,7 +295,7 @@ int exec_instr(VM *vm) {
         case 0b01011: {
             skip_alignment(&buffer, &total_read_bits, 3);
             word func_addr = read_number(&buffer, &total_read_bits);
-            word ret_addr = vm->registers[REG_IP] + 3;
+            word ret_addr = vm->registers[REG_IP] + 5;
             push_in_stack(vm, ret_addr);
             vm->registers[REG_IP] = func_addr;
             return 1;

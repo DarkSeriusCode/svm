@@ -1,4 +1,6 @@
 // FIX: Memory leaks, despite the fact that nobody cares about them in compilers
+// TODO: Dead code ellimination
+// TODO: Make assembler case-sensetive
 #define VECTOR_IMPLEMENTATION
 #define STR_IMPLEMENTATION
 

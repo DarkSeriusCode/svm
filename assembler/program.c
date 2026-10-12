@@ -6,7 +6,6 @@
 #include "io.h"
 #include <assert.h>
 #include <stdint.h>
-#include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -238,7 +237,6 @@ static void append_cmp(BitArray *buffer, Token cmp) {
 
 void program_compile_code(Program *prog, vector(byte) *buffer, Instr instr) {
     // TODO: Clean it up
-    // TODO: Remove required size
     BitArray instr_bin_repr = new_bitarray();
     bitarray_push_nbits(&instr_bin_repr, OPCODE_BIT_SIZE, instr.opcode);
 

@@ -1,4 +1,4 @@
-# SVM (Simple Virtual Machine)
+# SVM (Simple Virtual Machine) NO AI
 
 > [!WARNING]
 > This project is unfinished, so many features may not work properly!
